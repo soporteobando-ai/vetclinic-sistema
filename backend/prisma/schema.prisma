@@ -1,0 +1,431 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// USUARIOS Y ROLES
+// ─────────────────────────────────────────────
+
+model Usuario {
+  id          String   @id @default(cuid())
+  nombre      String
+  apellido    String
+  email       String   @unique
+  password    String
+  rol         String   @default("RECEPCIONISTA")
+  telefono    String?
+  avatar      String?
+  activo      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  turnos            Turno[]            @relation("profesionalTurnos")
+  consultas         Consulta[]         @relation("veterinarioConsultas")
+  serviciosEstetica ServicioEstetica[] @relation("estilistaServicios")
+  cliente           Cliente?
+}
+
+// ─────────────────────────────────────────────
+// CLIENTES Y MASCOTAS
+// ─────────────────────────────────────────────
+
+model Cliente {
+  id             String   @id @default(cuid())
+  usuarioId      String?  @unique
+  nombre         String
+  apellido       String
+  dni            String?  @unique
+  email          String?
+  telefono       String
+  telefonoAlt    String?
+  direccion      String?
+  ciudad         String?
+  notas          String?
+  fidelidad      Int      @default(0)
+  saldoCuenta    Float    @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  usuario        Usuario?      @relation(fields: [usuarioId], references: [id])
+  mascotas       Mascota[]
+  turnos         Turno[]
+  facturas       Factura[]
+  presupuestos   Presupuesto[]
+}
+
+model Mascota {
+  id                  String    @id @default(cuid())
+  clienteId           String
+  nombre              String
+  especie             String
+  raza                String?
+  sexo                String
+  fechaNacimiento     DateTime?
+  color               String?
+  peso                Float?
+  microchip           String?   @unique
+  foto                String?
+  esterilizado        Boolean   @default(false)
+  alergias            String?
+  condicionesCronicas String?
+  activo              Boolean   @default(true)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  cliente           Cliente            @relation(fields: [clienteId], references: [id])
+  turnos            Turno[]
+  consultas         Consulta[]
+  vacunas           Vacuna[]
+  desparasitaciones Desparasitacion[]
+  serviciosEstetica ServicioEstetica[]
+  internaciones     Internacion[]
+  carnetDigital     CarnetDigital?
+}
+
+// ─────────────────────────────────────────────
+// AGENDA Y TURNOS
+// ─────────────────────────────────────────────
+
+model Turno {
+  id                  String   @id @default(cuid())
+  mascotaId           String
+  clienteId           String
+  profesionalId       String?
+  tipo                String
+  estado              String   @default("PENDIENTE")
+  fechaHora           DateTime
+  duracionMin         Int      @default(30)
+  motivo              String?
+  notas               String?
+  recordatorioEnviado Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  mascota          Mascota          @relation(fields: [mascotaId], references: [id])
+  cliente          Cliente          @relation(fields: [clienteId], references: [id])
+  profesional      Usuario?         @relation("profesionalTurnos", fields: [profesionalId], references: [id])
+  consulta         Consulta?
+  servicioEstetica ServicioEstetica?
+  guarderia        Guarderia?
+}
+
+// ─────────────────────────────────────────────
+// MÓDULO CLÍNICO
+// ─────────────────────────────────────────────
+
+model Consulta {
+  id                     String    @id @default(cuid())
+  turnoId                String    @unique
+  mascotaId              String
+  veterinarioId          String
+  fecha                  DateTime  @default(now())
+  motivo                 String
+  sintomas               String?
+  exploracionFisica      String?
+  temperatura            Float?
+  frecuenciaCardiaca     Int?
+  frecuenciaRespiratoria Int?
+  pesoConsulta           Float?
+  diagnosticoDiferencial String?
+  diagnosticoDefinitivo  String?
+  planTratamiento        String?
+  observaciones          String?
+  proximoControl         DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  turno       Turno    @relation(fields: [turnoId], references: [id])
+  mascota     Mascota  @relation(fields: [mascotaId], references: [id])
+  veterinario Usuario  @relation("veterinarioConsultas", fields: [veterinarioId], references: [id])
+  recetas     Receta[]
+  estudios    Estudio[]
+}
+
+model Receta {
+  id              String   @id @default(cuid())
+  consultaId      String
+  medicamento     String
+  principioActivo String?
+  dosis           String
+  frecuencia      String
+  duracion        String
+  cantidad        String?
+  indicaciones    String?
+  createdAt       DateTime @default(now())
+
+  consulta Consulta @relation(fields: [consultaId], references: [id])
+}
+
+model Estudio {
+  id          String   @id @default(cuid())
+  consultaId  String
+  tipo        String
+  descripcion String
+  archivo     String?
+  resultado   String?
+  fecha       DateTime @default(now())
+  laboratorio String?
+  createdAt   DateTime @default(now())
+
+  consulta Consulta @relation(fields: [consultaId], references: [id])
+}
+
+model Vacuna {
+  id              String   @id @default(cuid())
+  mascotaId       String
+  nombre          String
+  laboratorio     String?
+  lote            String?
+  fechaAplicacion DateTime
+  proximaDosis    DateTime?
+  veterinarioId   String?
+  notas           String?
+  createdAt       DateTime @default(now())
+
+  mascota Mascota @relation(fields: [mascotaId], references: [id])
+}
+
+model Desparasitacion {
+  id              String    @id @default(cuid())
+  mascotaId       String
+  producto        String
+  tipo            String
+  fechaAplicacion DateTime
+  proximaDosis    DateTime?
+  veterinarioId   String?
+  notas           String?
+  createdAt       DateTime  @default(now())
+
+  mascota Mascota @relation(fields: [mascotaId], references: [id])
+}
+
+model CarnetDigital {
+  id        String   @id @default(cuid())
+  mascotaId String   @unique
+  codigo    String   @unique @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  mascota Mascota @relation(fields: [mascotaId], references: [id])
+}
+
+model CamaInternacion {
+  id     String  @id @default(cuid())
+  numero String  @unique
+  sector String?
+  estado String  @default("DISPONIBLE")
+  notas  String?
+
+  internaciones Internacion[]
+}
+
+model Internacion {
+  id            String    @id @default(cuid())
+  mascotaId     String
+  camaId        String
+  veterinarioId String?
+  fechaIngreso  DateTime  @default(now())
+  fechaAlta     DateTime?
+  motivoIngreso String
+  diagnostico   String?
+  tratamiento   String?
+  activa        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  mascota            Mascota              @relation(fields: [mascotaId], references: [id])
+  cama               CamaInternacion      @relation(fields: [camaId], references: [id])
+  evolucionesDiarias EvolucionInternacion[]
+}
+
+model EvolucionInternacion {
+  id            String   @id @default(cuid())
+  internacionId String
+  fecha         DateTime @default(now())
+  veterinarioId String?
+  temperatura   Float?
+  peso          Float?
+  estadoGeneral String?
+  notas         String
+  createdAt     DateTime @default(now())
+
+  internacion Internacion @relation(fields: [internacionId], references: [id])
+}
+
+// ─────────────────────────────────────────────
+// MÓDULO ESTÉTICA Y GROOMING
+// ─────────────────────────────────────────────
+
+model ServicioEstetica {
+  id                String   @id @default(cuid())
+  turnoId           String   @unique
+  mascotaId         String
+  estilistId        String?
+  servicios         String   @default("[]")
+  estadoGrooming    String   @default("EN_COLA")
+  condicionPelaje   String?
+  reaccionesMascota String?
+  productosUsados   String?
+  observaciones     String?
+  fotosAntes        String   @default("[]")
+  fotosDespues      String   @default("[]")
+  duracionMin       Int?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  turno     Turno    @relation(fields: [turnoId], references: [id])
+  mascota   Mascota  @relation(fields: [mascotaId], references: [id])
+  estilista Usuario? @relation("estilistaServicios", fields: [estilistId], references: [id])
+}
+
+// ─────────────────────────────────────────────
+// GUARDERÍA Y HOSPEDAJE
+// ─────────────────────────────────────────────
+
+model BoxGuarderia {
+  id        String  @id @default(cuid())
+  numero    String  @unique
+  tipo      String
+  capacidad Int     @default(1)
+  activo    Boolean @default(true)
+  notas     String?
+
+  guarderias Guarderia[]
+}
+
+model Guarderia {
+  id                  String    @id @default(cuid())
+  turnoId             String    @unique
+  mascotaId           String?
+  boxId               String?
+  fechaIngreso        DateTime  @default(now())
+  fechaEgreso         DateTime?
+  planAlimenticio     String?
+  autorizacionFirmada Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  turno            Turno         @relation(fields: [turnoId], references: [id])
+  box              BoxGuarderia? @relation(fields: [boxId], references: [id])
+  novedadesDiarias NovedadGuarderia[]
+}
+
+model NovedadGuarderia {
+  id          String   @id @default(cuid())
+  guarderiaId String
+  fecha       DateTime @default(now())
+  descripcion String
+  fotos       String   @default("[]")
+  createdAt   DateTime @default(now())
+
+  guarderia Guarderia @relation(fields: [guarderiaId], references: [id])
+}
+
+// ─────────────────────────────────────────────
+// INVENTARIO Y STOCK
+// ─────────────────────────────────────────────
+
+model Producto {
+  id              String   @id @default(cuid())
+  nombre          String
+  descripcion     String?
+  categoria       String
+  principioActivo String?
+  marca           String?
+  proveedor       String?
+  codigoBarra     String?  @unique
+  stockActual     Int      @default(0)
+  stockMinimo     Int      @default(5)
+  precio          Float    @default(0)
+  unidad          String   @default("unidad")
+  vencimiento     DateTime?
+  activo          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  movimientos     MovimientoStock[]
+  detallesFactura DetalleFactura[]
+}
+
+model MovimientoStock {
+  id         String   @id @default(cuid())
+  productoId String
+  tipo       String
+  cantidad   Int
+  motivo     String?
+  referencia String?
+  usuarioId  String?
+  createdAt  DateTime @default(now())
+
+  producto Producto @relation(fields: [productoId], references: [id])
+}
+
+// ─────────────────────────────────────────────
+// FACTURACIÓN Y COBROS
+// ─────────────────────────────────────────────
+
+model Presupuesto {
+  id          String    @id @default(cuid())
+  clienteId   String
+  descripcion String
+  items       String
+  total       Float
+  validoHasta DateTime?
+  aceptado    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+
+  cliente Cliente  @relation(fields: [clienteId], references: [id])
+  factura Factura?
+}
+
+model Factura {
+  id               String    @id @default(cuid())
+  numero           String    @unique
+  clienteId        String
+  presupuestoId    String?   @unique
+  estado           String    @default("PENDIENTE")
+  subtotal         Float
+  descuento        Float     @default(0)
+  total            Float
+  medioPago        String?
+  fechaEmision     DateTime  @default(now())
+  fechaVencimiento DateTime?
+  notas            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  cliente     Cliente        @relation(fields: [clienteId], references: [id])
+  presupuesto Presupuesto?   @relation(fields: [presupuestoId], references: [id])
+  detalles    DetalleFactura[]
+  pagos       Pago[]
+}
+
+model DetalleFactura {
+  id          String  @id @default(cuid())
+  facturaId   String
+  productoId  String?
+  descripcion String
+  cantidad    Int     @default(1)
+  precioUnit  Float
+  subtotal    Float
+
+  factura  Factura   @relation(fields: [facturaId], references: [id])
+  producto Producto? @relation(fields: [productoId], references: [id])
+}
+
+model Pago {
+  id        String   @id @default(cuid())
+  facturaId String
+  monto     Float
+  medioPago String
+  referencia String?
+  fecha     DateTime @default(now())
+  notas     String?
+
+  factura Factura @relation(fields: [facturaId], references: [id])
+}
