@@ -11,7 +11,7 @@ async function main() {
 
   const admin = await prisma.usuario.upsert({
     where: { email: 'admin@vetclinic.com' },
-    update: {},
+    update: { password: await hash('admin123') },
     create: {
       nombre: 'Admin', apellido: 'Sistema',
       email: 'admin@vetclinic.com',
