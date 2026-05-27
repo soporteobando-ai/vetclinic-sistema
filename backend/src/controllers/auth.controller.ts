@@ -7,7 +7,21 @@ import { AuthRequest } from '../middleware/auth.middleware';
 export const login = async (req: Request, res: Response) => {
   const { email, password } = req.body;
   try {
-    const usuario = await prisma.usuario.findUnique({ where: { email } });
+    const usuario = await prisma.usuario.findUnique({
+      where: { email },
+      include: {
+        roles: {
+          include: {
+            rol: {
+              include: {
+                permisos: { include: { permiso: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
     if (!usuario || !usuario.activo) {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
@@ -15,28 +29,43 @@ export const login = async (req: Request, res: Response) => {
     if (!valido) return res.status(401).json({ error: 'Credenciales inválidas' });
 
     const token = jwt.sign(
-      { id: usuario.id, rol: usuario.rol, email: usuario.email },
+      { id: usuario.id, veterinariaId: usuario.veterinariaId, email: usuario.email },
       process.env.JWT_SECRET!,
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' } as any
     );
 
-    const { password: _, ...usuarioSinPassword } = usuario;
-    res.json({ token, usuario: usuarioSinPassword });
+    const esAdmin = usuario.roles.some(ur => ur.rol.esAdmin);
+    const permisos = [...new Set(
+      usuario.roles.flatMap(ur => ur.rol.permisos.map(rp => rp.permiso.codigo))
+    )];
+
+    const nombreRol = usuario.roles[0]?.rol.nombre ?? 'USUARIO';
+
+    const { password: _, roles: __, ...base } = usuario;
+    res.json({
+      token,
+      usuario: {
+        ...base,
+        rol: nombreRol,
+        esAdmin,
+        permisos,
+      },
+    });
   } catch (error) {
     res.status(500).json({ error: 'Error al iniciar sesión' });
   }
 };
 
 export const registro = async (req: Request, res: Response) => {
-  const { nombre, apellido, email, password, rol, telefono } = req.body;
+  const { nombre, apellido, email, password, telefono, veterinariaId } = req.body;
   try {
     const existe = await prisma.usuario.findUnique({ where: { email } });
     if (existe) return res.status(400).json({ error: 'El email ya está registrado' });
 
     const hash = await bcrypt.hash(password, 10);
     const usuario = await prisma.usuario.create({
-      data: { nombre, apellido, email, password: hash, rol, telefono },
-      select: { id: true, nombre: true, apellido: true, email: true, rol: true, createdAt: true },
+      data: { nombre, apellido, email, password: hash, veterinariaId, telefono },
+      select: { id: true, nombre: true, apellido: true, email: true, veterinariaId: true, createdAt: true },
     });
 
     res.status(201).json(usuario);
@@ -49,9 +78,26 @@ export const perfil = async (req: AuthRequest, res: Response) => {
   try {
     const usuario = await prisma.usuario.findUnique({
       where: { id: req.usuario!.id },
-      select: { id: true, nombre: true, apellido: true, email: true, rol: true, telefono: true, avatar: true },
+      select: {
+        id: true, nombre: true, apellido: true, email: true,
+        veterinariaId: true, telefono: true, avatar: true,
+        roles: {
+          include: {
+            rol: {
+              include: { permisos: { include: { permiso: true } } },
+            },
+          },
+        },
+      },
     });
-    res.json(usuario);
+    if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    const { roles, ...base } = usuario;
+    const esAdmin = roles.some(ur => ur.rol.esAdmin);
+    const permisos = [...new Set(roles.flatMap(ur => ur.rol.permisos.map(rp => rp.permiso.codigo)))];
+    const nombreRol = roles[0]?.rol.nombre ?? 'USUARIO';
+
+    res.json({ ...base, rol: nombreRol, esAdmin, permisos });
   } catch {
     res.status(500).json({ error: 'Error al obtener perfil' });
   }

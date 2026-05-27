@@ -1,5 +1,6 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import prisma from '../config/prisma';
+import { AuthRequest, filtroTenant } from '../middleware/auth.middleware';
 
 const parsearFecha = (valor: any): Date | null => {
   if (!valor || valor === '') return null;
@@ -28,10 +29,11 @@ const sanitizarConsulta = (body: any) => {
   return data;
 };
 
-export const crear = async (req: Request, res: Response) => {
+export const crear = async (req: AuthRequest, res: Response) => {
+  const tenant = filtroTenant(req);
   try {
     const consulta = await prisma.consulta.create({
-      data: sanitizarConsulta(req.body),
+      data: { ...tenant, ...sanitizarConsulta(req.body) },
       include: {
         mascota: true,
         veterinario: { select: { nombre: true, apellido: true } },
@@ -39,7 +41,6 @@ export const crear = async (req: Request, res: Response) => {
       },
     });
 
-    // Actualizar estado del turno a EN_CURSO
     await prisma.turno.update({
       where: { id: consulta.turnoId },
       data: { estado: 'EN_CURSO' },
@@ -52,10 +53,11 @@ export const crear = async (req: Request, res: Response) => {
   }
 };
 
-export const obtener = async (req: Request, res: Response) => {
+export const obtener = async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
-  const consulta = await prisma.consulta.findUnique({
-    where: { id },
+  const tenant = filtroTenant(req);
+  const consulta = await prisma.consulta.findFirst({
+    where: { id, ...tenant },
     include: {
       mascota: { include: { cliente: true } },
       veterinario: { select: { nombre: true, apellido: true } },
@@ -67,9 +69,12 @@ export const obtener = async (req: Request, res: Response) => {
   res.json(consulta);
 };
 
-export const actualizar = async (req: Request, res: Response) => {
+export const actualizar = async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
+  const tenant = filtroTenant(req);
   try {
+    const existing = await prisma.consulta.findFirst({ where: { id, ...tenant } });
+    if (!existing) return res.status(404).json({ error: 'Consulta no encontrada' });
     const consulta = await prisma.consulta.update({ where: { id }, data: sanitizarConsulta(req.body) });
     res.json(consulta);
   } catch {
@@ -77,7 +82,7 @@ export const actualizar = async (req: Request, res: Response) => {
   }
 };
 
-export const agregarReceta = async (req: Request, res: Response) => {
+export const agregarReceta = async (req: AuthRequest, res: Response) => {
   const { consultaId } = req.params;
   try {
     const { medicamento, principioActivo, dosis, frecuencia, duracion, cantidad, indicaciones } = req.body;
@@ -90,7 +95,7 @@ export const agregarReceta = async (req: Request, res: Response) => {
   }
 };
 
-export const editarReceta = async (req: Request, res: Response) => {
+export const editarReceta = async (req: AuthRequest, res: Response) => {
   const { recetaId } = req.params;
   try {
     const { medicamento, principioActivo, dosis, frecuencia, duracion, cantidad, indicaciones } = req.body;
@@ -104,7 +109,7 @@ export const editarReceta = async (req: Request, res: Response) => {
   }
 };
 
-export const eliminarReceta = async (req: Request, res: Response) => {
+export const eliminarReceta = async (req: AuthRequest, res: Response) => {
   const { recetaId } = req.params;
   try {
     await prisma.receta.delete({ where: { id: recetaId } });
@@ -114,7 +119,7 @@ export const eliminarReceta = async (req: Request, res: Response) => {
   }
 };
 
-export const agregarEstudio = async (req: Request, res: Response) => {
+export const agregarEstudio = async (req: AuthRequest, res: Response) => {
   const { consultaId } = req.params;
   try {
     const { tipo, descripcion, laboratorio, resultado } = req.body;
@@ -127,7 +132,7 @@ export const agregarEstudio = async (req: Request, res: Response) => {
   }
 };
 
-export const editarEstudio = async (req: Request, res: Response) => {
+export const editarEstudio = async (req: AuthRequest, res: Response) => {
   const { estudioId } = req.params;
   try {
     const { tipo, descripcion, laboratorio, resultado } = req.body;
@@ -141,7 +146,7 @@ export const editarEstudio = async (req: Request, res: Response) => {
   }
 };
 
-export const eliminarEstudio = async (req: Request, res: Response) => {
+export const eliminarEstudio = async (req: AuthRequest, res: Response) => {
   const { estudioId } = req.params;
   try {
     await prisma.estudio.delete({ where: { id: estudioId } });
@@ -151,16 +156,13 @@ export const eliminarEstudio = async (req: Request, res: Response) => {
   }
 };
 
-export const registrarVacuna = async (req: Request, res: Response) => {
+export const registrarVacuna = async (req: AuthRequest, res: Response) => {
   try {
     const { mascotaId, veterinarioId, nombre, laboratorio, lote, notas, fechaAplicacion, proximaDosis } = req.body;
     const vacuna = await prisma.vacuna.create({
       data: {
-        mascotaId,
-        veterinarioId: veterinarioId || null,
-        nombre,
-        laboratorio: laboratorio || null,
-        lote: lote || null,
+        mascotaId, veterinarioId: veterinarioId || null,
+        nombre, laboratorio: laboratorio || null, lote: lote || null,
         notas: notas || null,
         fechaAplicacion: parsearFecha(fechaAplicacion) ?? new Date(),
         proximaDosis: parsearFecha(proximaDosis),
@@ -173,16 +175,13 @@ export const registrarVacuna = async (req: Request, res: Response) => {
   }
 };
 
-export const registrarDesparasitacion = async (req: Request, res: Response) => {
+export const registrarDesparasitacion = async (req: AuthRequest, res: Response) => {
   try {
     const { mascotaId, veterinarioId, producto, tipo, notas, fechaAplicacion, proximaDosis } = req.body;
     const d = await prisma.desparasitacion.create({
       data: {
-        mascotaId,
-        veterinarioId: veterinarioId || null,
-        producto,
-        tipo,
-        notas: notas || null,
+        mascotaId, veterinarioId: veterinarioId || null,
+        producto, tipo, notas: notas || null,
         fechaAplicacion: parsearFecha(fechaAplicacion) ?? new Date(),
         proximaDosis: parsearFecha(proximaDosis),
       },
@@ -194,17 +193,14 @@ export const registrarDesparasitacion = async (req: Request, res: Response) => {
   }
 };
 
-export const completarConsulta = async (req: Request, res: Response) => {
+export const completarConsulta = async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
+  const tenant = filtroTenant(req);
   try {
-    const consulta = await prisma.consulta.findUnique({ where: { id } });
+    const consulta = await prisma.consulta.findFirst({ where: { id, ...tenant } });
     if (!consulta) return res.status(404).json({ error: 'Consulta no encontrada' });
 
-    await prisma.turno.update({
-      where: { id: consulta.turnoId },
-      data: { estado: 'COMPLETADO' },
-    });
-
+    await prisma.turno.update({ where: { id: consulta.turnoId }, data: { estado: 'COMPLETADO' } });
     res.json({ mensaje: 'Consulta completada' });
   } catch {
     res.status(500).json({ error: 'Error al completar consulta' });

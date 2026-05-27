@@ -1,15 +1,20 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import prisma from '../config/prisma';
+import { AuthRequest, filtroTenant } from '../middleware/auth.middleware';
 
-const generarNumero = async (): Promise<string> => {
-  const ultima = await prisma.factura.findFirst({ orderBy: { createdAt: 'desc' } });
+const generarNumero = async (veterinariaId: string): Promise<string> => {
+  const ultima = await prisma.factura.findFirst({
+    where: { veterinariaId },
+    orderBy: { createdAt: 'desc' },
+  });
   const num = ultima ? parseInt(ultima.numero.split('-')[1]) + 1 : 1;
   return `FAC-${String(num).padStart(6, '0')}`;
 };
 
-export const listar = async (req: Request, res: Response) => {
+export const listar = async (req: AuthRequest, res: Response) => {
   const { clienteId, estado, desde, hasta } = req.query;
-  const where: any = {};
+  const tenant = filtroTenant(req);
+  const where: any = { ...tenant };
   if (clienteId) where.clienteId = String(clienteId);
   if (estado) where.estado = String(estado);
   if (desde || hasta) {
@@ -30,10 +35,11 @@ export const listar = async (req: Request, res: Response) => {
   res.json(facturas);
 };
 
-export const obtener = async (req: Request, res: Response) => {
+export const obtener = async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
-  const factura = await prisma.factura.findUnique({
-    where: { id },
+  const tenant = filtroTenant(req);
+  const factura = await prisma.factura.findFirst({
+    where: { id, ...tenant },
     include: {
       cliente: true,
       detalles: { include: { producto: true } },
@@ -45,23 +51,18 @@ export const obtener = async (req: Request, res: Response) => {
   res.json(factura);
 };
 
-export const crear = async (req: Request, res: Response) => {
+export const crear = async (req: AuthRequest, res: Response) => {
   const { clienteId, detalles, descuento = 0, medioPago, notas, presupuestoId } = req.body;
+  const tenant = filtroTenant(req);
   try {
-    const numero = await generarNumero();
+    const numero = await generarNumero(tenant.veterinariaId);
     const subtotal = detalles.reduce((acc: number, d: any) => acc + d.subtotal, 0);
     const total = subtotal - descuento;
 
     const factura = await prisma.factura.create({
       data: {
-        numero,
-        clienteId,
-        presupuestoId,
-        subtotal,
-        descuento,
-        total,
-        medioPago,
-        notas,
+        ...tenant,
+        numero, clienteId, presupuestoId, subtotal, descuento, total, medioPago, notas,
         detalles: { create: detalles },
       },
       include: { detalles: true, cliente: { select: { nombre: true, apellido: true } } },
@@ -73,19 +74,17 @@ export const crear = async (req: Request, res: Response) => {
   }
 };
 
-export const registrarPago = async (req: Request, res: Response) => {
+export const registrarPago = async (req: AuthRequest, res: Response) => {
   const { facturaId } = req.params;
   const { monto, medioPago, referencia, notas } = req.body;
+  const tenant = filtroTenant(req);
   try {
-    const pago = await prisma.pago.create({
-      data: { facturaId, monto, medioPago, referencia, notas },
-    });
+    const facturaExisting = await prisma.factura.findFirst({ where: { id: facturaId, ...tenant } });
+    if (!facturaExisting) return res.status(404).json({ error: 'Factura no encontrada' });
 
-    const factura = await prisma.factura.findUnique({
-      where: { id: facturaId },
-      include: { pagos: true },
-    });
+    const pago = await prisma.pago.create({ data: { facturaId, monto, medioPago, referencia, notas } });
 
+    const factura = await prisma.factura.findUnique({ where: { id: facturaId }, include: { pagos: true } });
     const totalPagado = factura!.pagos.reduce((acc, p) => acc + p.monto, 0);
     const nuevoEstado = totalPagado >= factura!.total ? 'PAGADA'
       : totalPagado > 0 ? 'PARCIAL' : 'PENDIENTE';
@@ -97,20 +96,27 @@ export const registrarPago = async (req: Request, res: Response) => {
   }
 };
 
-export const anular = async (req: Request, res: Response) => {
+export const anular = async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
+  const tenant = filtroTenant(req);
+  const existing = await prisma.factura.findFirst({ where: { id, ...tenant } });
+  if (!existing) return res.status(404).json({ error: 'Factura no encontrada' });
   await prisma.factura.update({ where: { id }, data: { estado: 'ANULADA' } });
   res.json({ mensaje: 'Factura anulada' });
 };
 
-export const getCajaDiaria = async (_req: Request, res: Response) => {
+export const getCajaDiaria = async (req: AuthRequest, res: Response) => {
+  const tenant = filtroTenant(req);
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
   const manana = new Date(hoy);
   manana.setDate(manana.getDate() + 1);
 
   const pagos = await prisma.pago.findMany({
-    where: { fecha: { gte: hoy, lt: manana } },
+    where: {
+      fecha: { gte: hoy, lt: manana },
+      factura: { veterinariaId: tenant.veterinariaId },
+    },
     include: { factura: { include: { cliente: { select: { nombre: true, apellido: true } } } } },
     orderBy: { fecha: 'asc' },
   });

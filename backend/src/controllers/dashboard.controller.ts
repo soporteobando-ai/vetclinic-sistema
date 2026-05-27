@@ -1,9 +1,10 @@
 import { Response } from 'express';
-import { AuthRequest } from '../middleware/auth.middleware';
+import { AuthRequest, filtroTenant } from '../middleware/auth.middleware';
 import prisma from '../config/prisma';
 import { startOfDay, endOfDay, startOfMonth, endOfMonth, addDays } from '../utils/fechas';
 
-export const getMetricas = async (_req: AuthRequest, res: Response) => {
+export const getMetricas = async (req: AuthRequest, res: Response) => {
+  const tenant = filtroTenant(req);
   try {
     const hoy = new Date();
     const inicioHoy = startOfDay(hoy);
@@ -19,44 +20,39 @@ export const getMetricas = async (_req: AuthRequest, res: Response) => {
       clientesTotal,
       consultasHoy,
       ingresosMes,
-      stockCritico,
       vacunasProximas,
       internacionesActivas,
       groomingActivo,
     ] = await Promise.all([
-      prisma.turno.count({ where: { fechaHora: { gte: inicioHoy, lte: finHoy } } }),
-      prisma.turno.count({ where: { fechaHora: { gte: inicioMes, lte: finMes }, estado: { not: 'CANCELADO' } } }),
-      prisma.mascota.count({ where: { activo: true } }),
-      prisma.cliente.count(),
-      prisma.consulta.count({ where: { fecha: { gte: inicioHoy, lte: finHoy } } }),
+      prisma.turno.count({ where: { ...tenant, fechaHora: { gte: inicioHoy, lte: finHoy } } }),
+      prisma.turno.count({ where: { ...tenant, fechaHora: { gte: inicioMes, lte: finMes }, estado: { not: 'CANCELADO' } } }),
+      prisma.mascota.count({ where: { ...tenant, activo: true } }),
+      prisma.cliente.count({ where: tenant }),
+      prisma.consulta.count({ where: { ...tenant, fecha: { gte: inicioHoy, lte: finHoy } } }),
       prisma.factura.aggregate({
-        where: { fechaEmision: { gte: inicioMes, lte: finMes }, estado: { not: 'ANULADA' } },
+        where: { ...tenant, fechaEmision: { gte: inicioMes, lte: finMes }, estado: { not: 'ANULADA' } },
         _sum: { total: true },
       }),
-      prisma.producto.count({ where: { activo: true } }),
-      prisma.vacuna.count({ where: { proximaDosis: { gte: hoy, lte: en7Dias } } }),
-      prisma.internacion.count({ where: { activa: true } }),
-      prisma.servicioEstetica.count({ where: { estadoGrooming: { in: ['EN_COLA', 'EN_PROCESO'] } } }),
+      prisma.vacuna.count({
+        where: {
+          proximaDosis: { gte: hoy, lte: en7Dias },
+          mascota: { veterinariaId: tenant.veterinariaId },
+        },
+      }),
+      prisma.internacion.count({ where: { ...tenant, activa: true } }),
+      prisma.servicioEstetica.count({ where: { ...tenant, estadoGrooming: { in: ['EN_COLA', 'EN_PROCESO'] } } }),
     ]);
 
-    // Stock crítico real (comparación en JS)
     const productosStockBajo = await prisma.producto.findMany({
-      where: { activo: true },
+      where: { ...tenant, activo: true },
       select: { id: true, nombre: true, stockActual: true, stockMinimo: true },
     });
-    const stockCriticoReal = productosStockBajo.filter(p => p.stockActual <= p.stockMinimo);
+    const stockCritico = productosStockBajo.filter(p => p.stockActual <= p.stockMinimo).length;
 
     res.json({
-      turnosHoy,
-      turnosMes,
-      pacientesTotal,
-      clientesTotal,
-      consultasHoy,
+      turnosHoy, turnosMes, pacientesTotal, clientesTotal, consultasHoy,
       ingresosMes: ingresosMes._sum.total || 0,
-      stockCritico: stockCriticoReal.length,
-      vacunasProximas,
-      internacionesActivas,
-      groomingActivo,
+      stockCritico, vacunasProximas, internacionesActivas, groomingActivo,
     });
   } catch (error) {
     console.error(error);
@@ -64,17 +60,16 @@ export const getMetricas = async (_req: AuthRequest, res: Response) => {
   }
 };
 
-export const getTurnosHoy = async (_req: AuthRequest, res: Response) => {
+export const getTurnosHoy = async (req: AuthRequest, res: Response) => {
+  const tenant = filtroTenant(req);
   try {
     const hoy = new Date();
     const turnos = await prisma.turno.findMany({
-      where: {
-        fechaHora: { gte: startOfDay(hoy), lte: endOfDay(hoy) },
-      },
+      where: { ...tenant, fechaHora: { gte: startOfDay(hoy), lte: endOfDay(hoy) } },
       include: {
         mascota: { select: { id: true, nombre: true, especie: true, raza: true, foto: true } },
         cliente: { select: { id: true, nombre: true, apellido: true, telefono: true } },
-        profesional: { select: { id: true, nombre: true, apellido: true, rol: true } },
+        profesional: { select: { id: true, nombre: true, apellido: true } },
       },
       orderBy: { fechaHora: 'asc' },
     });
@@ -84,10 +79,12 @@ export const getTurnosHoy = async (_req: AuthRequest, res: Response) => {
   }
 };
 
-export const getActividadReciente = async (_req: AuthRequest, res: Response) => {
+export const getActividadReciente = async (req: AuthRequest, res: Response) => {
+  const tenant = filtroTenant(req);
   try {
     const [ultimasConsultas, ultimosTurnos, ultimasFacturas] = await Promise.all([
       prisma.consulta.findMany({
+        where: tenant,
         take: 5,
         orderBy: { createdAt: 'desc' },
         include: {
@@ -96,15 +93,16 @@ export const getActividadReciente = async (_req: AuthRequest, res: Response) => 
         },
       }),
       prisma.turno.findMany({
+        where: { ...tenant, estado: 'COMPLETADO' },
         take: 5,
         orderBy: { createdAt: 'desc' },
-        where: { estado: 'COMPLETADO' },
         include: {
           mascota: { select: { nombre: true } },
           cliente: { select: { nombre: true, apellido: true } },
         },
       }),
       prisma.factura.findMany({
+        where: tenant,
         take: 5,
         orderBy: { createdAt: 'desc' },
         include: { cliente: { select: { nombre: true, apellido: true } } },
@@ -117,10 +115,11 @@ export const getActividadReciente = async (_req: AuthRequest, res: Response) => 
   }
 };
 
-export const getAlertasStock = async (_req: AuthRequest, res: Response) => {
+export const getAlertasStock = async (req: AuthRequest, res: Response) => {
+  const tenant = filtroTenant(req);
   try {
     const productos = await prisma.producto.findMany({
-      where: { activo: true },
+      where: { ...tenant, activo: true },
       orderBy: { stockActual: 'asc' },
     });
     const criticos = productos.filter(p => p.stockActual <= p.stockMinimo);
@@ -130,11 +129,15 @@ export const getAlertasStock = async (_req: AuthRequest, res: Response) => {
   }
 };
 
-export const getVacunasProximas = async (_req: AuthRequest, res: Response) => {
+export const getVacunasProximas = async (req: AuthRequest, res: Response) => {
+  const tenant = filtroTenant(req);
   try {
     const en15Dias = addDays(new Date(), 15);
     const vacunas = await prisma.vacuna.findMany({
-      where: { proximaDosis: { gte: new Date(), lte: en15Dias } },
+      where: {
+        proximaDosis: { gte: new Date(), lte: en15Dias },
+        mascota: { veterinariaId: tenant.veterinariaId },
+      },
       include: { mascota: { include: { cliente: { select: { nombre: true, apellido: true, telefono: true } } } } },
       orderBy: { proximaDosis: 'asc' },
     });
@@ -144,7 +147,8 @@ export const getVacunasProximas = async (_req: AuthRequest, res: Response) => {
   }
 };
 
-export const getIngresosPorPeriodo = async (_req: AuthRequest, res: Response) => {
+export const getIngresosPorPeriodo = async (req: AuthRequest, res: Response) => {
+  const tenant = filtroTenant(req);
   try {
     const meses = [];
     for (let i = 5; i >= 0; i--) {
@@ -154,7 +158,7 @@ export const getIngresosPorPeriodo = async (_req: AuthRequest, res: Response) =>
       const fin = endOfMonth(fecha);
 
       const resultado = await prisma.factura.aggregate({
-        where: { fechaEmision: { gte: inicio, lte: fin }, estado: { not: 'ANULADA' } },
+        where: { ...tenant, fechaEmision: { gte: inicio, lte: fin }, estado: { not: 'ANULADA' } },
         _sum: { total: true },
       });
 

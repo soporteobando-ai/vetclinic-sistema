@@ -17,7 +17,10 @@ export interface Usuario {
   nombre: string;
   apellido: string;
   email: string;
-  rol: Rol;
+  rol: string;
+  veterinariaId: string;
+  esAdmin: boolean;
+  permisos: string[];
   telefono?: string;
   avatar?: string;
 }

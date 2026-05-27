@@ -1,40 +1,42 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import prisma from '../config/prisma';
+import { AuthRequest, filtroTenant } from '../middleware/auth.middleware';
 
-export const listar = async (req: Request, res: Response) => {
+export const listar = async (req: AuthRequest, res: Response) => {
   const { buscar, pagina = '1', porPagina = '20' } = req.query;
-  const skip = (Number(pagina) - 1) * Number(porPagina);
+  const tenant = filtroTenant(req);
+  const where: any = { ...tenant };
 
-  const where: any = {};
   if (buscar) {
     const q = { contains: String(buscar), mode: 'insensitive' as const };
     where.OR = [
-      { nombre: q }, { apellido: q }, { email: q },
-      { telefono: q }, { dni: q },
+      { nombre: q }, { apellido: q }, { dni: q },
+      { email: q }, { telefono: q },
     ];
   }
 
   const [clientes, total] = await Promise.all([
     prisma.cliente.findMany({
       where,
-      skip,
+      include: { mascotas: { where: { activo: true }, select: { id: true, nombre: true, especie: true } } },
+      orderBy: [{ apellido: 'asc' }, { nombre: 'asc' }],
+      skip: (Number(pagina) - 1) * Number(porPagina),
       take: Number(porPagina),
-      include: { mascotas: { where: { activo: true }, select: { id: true, nombre: true, especie: true, foto: true } } },
-      orderBy: { apellido: 'asc' },
     }),
     prisma.cliente.count({ where }),
   ]);
 
-  res.json({ clientes, total, pagina: Number(pagina), porPagina: Number(porPagina) });
+  res.json({ clientes, total });
 };
 
-export const obtener = async (req: Request, res: Response) => {
+export const obtener = async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
-  const cliente = await prisma.cliente.findUnique({
-    where: { id },
+  const tenant = filtroTenant(req);
+  const cliente = await prisma.cliente.findFirst({
+    where: { id, ...tenant },
     include: {
-      mascotas: { where: { activo: true }, include: { vacunas: { take: 3, orderBy: { fechaAplicacion: 'desc' } } } },
-      turnos: { take: 10, orderBy: { fechaHora: 'desc' }, include: { mascota: true } },
+      mascotas: { where: { activo: true } },
+      turnos: { take: 5, orderBy: { fechaHora: 'desc' }, include: { mascota: { select: { nombre: true } } } },
       facturas: { take: 5, orderBy: { createdAt: 'desc' } },
     },
   });
@@ -42,45 +44,54 @@ export const obtener = async (req: Request, res: Response) => {
   res.json(cliente);
 };
 
-// Extrae solo los campos del modelo Cliente (descarta relaciones anidadas)
-const sanitizarCliente = (body: any) => {
-  const CAMPOS_CLIENTE = [
-    'usuarioId', 'nombre', 'apellido', 'dni', 'email', 'telefono',
-    'telefonoAlt', 'direccion', 'ciudad', 'notas', 'fidelidad', 'saldoCuenta',
-  ];
-  const data: any = {};
-  for (const campo of CAMPOS_CLIENTE) {
-    if (campo in body) data[campo] = body[campo];
-  }
-  if (!data.dni || String(data.dni).trim() === '') data.dni = null;
-  if (!data.email || String(data.email).trim() === '') data.email = null;
-  return data;
-};
-
-export const crear = async (req: Request, res: Response) => {
+export const crear = async (req: AuthRequest, res: Response) => {
+  const { nombre, apellido, dni, email, telefono, telefonoAlt, direccion, ciudad, notas } = req.body;
+  const tenant = filtroTenant(req);
   try {
-    const cliente = await prisma.cliente.create({ data: sanitizarCliente(req.body) });
+    const cliente = await prisma.cliente.create({
+      data: {
+        ...tenant, nombre, apellido,
+        dni: dni || null, email: email || null, telefono,
+        telefonoAlt: telefonoAlt || null, direccion: direccion || null,
+        ciudad: ciudad || null, notas: notas || null,
+      },
+    });
     res.status(201).json(cliente);
   } catch (error: any) {
-    if (error.code === 'P2002') return res.status(400).json({ error: 'DNI o email ya registrado' });
+    if (error.code === 'P2002') return res.status(400).json({ error: 'DNI ya registrado en esta clínica' });
     res.status(500).json({ error: 'Error al crear cliente' });
   }
 };
 
-export const actualizar = async (req: Request, res: Response) => {
+export const actualizar = async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
+  const tenant = filtroTenant(req);
+  const { nombre, apellido, dni, email, telefono, telefonoAlt, direccion, ciudad, notas } = req.body;
   try {
-    const cliente = await prisma.cliente.update({ where: { id }, data: sanitizarCliente(req.body) });
+    const existing = await prisma.cliente.findFirst({ where: { id, ...tenant } });
+    if (!existing) return res.status(404).json({ error: 'Cliente no encontrado' });
+
+    const cliente = await prisma.cliente.update({
+      where: { id },
+      data: {
+        nombre, apellido, dni: dni || null, email: email || null, telefono,
+        telefonoAlt: telefonoAlt || null, direccion: direccion || null,
+        ciudad: ciudad || null, notas: notas || null,
+      },
+    });
     res.json(cliente);
   } catch (error: any) {
-    if (error.code === 'P2002') return res.status(400).json({ error: 'DNI o email ya registrado' });
+    if (error.code === 'P2002') return res.status(400).json({ error: 'DNI ya registrado en esta clínica' });
     res.status(500).json({ error: 'Error al actualizar cliente' });
   }
 };
 
-export const eliminar = async (req: Request, res: Response) => {
+export const eliminar = async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
+  const tenant = filtroTenant(req);
   try {
+    const existing = await prisma.cliente.findFirst({ where: { id, ...tenant } });
+    if (!existing) return res.status(404).json({ error: 'Cliente no encontrado' });
     await prisma.cliente.delete({ where: { id } });
     res.json({ mensaje: 'Cliente eliminado' });
   } catch {

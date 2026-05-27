@@ -8,22 +8,104 @@ datasource db {
 }
 
 // ─────────────────────────────────────────────
-// USUARIOS Y ROLES
+// MULTI-TENANCY: VETERINARIA
+// ─────────────────────────────────────────────
+
+model Veterinaria {
+  id        String   @id @default(cuid())
+  nombre    String
+  direccion String?
+  telefono  String?
+  email     String?
+  logo      String?
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  usuarios       Usuario[]
+  roles          Rol[]
+  clientes       Cliente[]
+  mascotas       Mascota[]
+  turnos         Turno[]
+  consultas      Consulta[]
+  productos      Producto[]
+  facturas       Factura[]
+  presupuestos   Presupuesto[]
+  internaciones  Internacion[]
+  camasInternacion CamaInternacion[]
+  boxesGuarderia   BoxGuarderia[]
+  guarderias       Guarderia[]
+  serviciosEstetica ServicioEstetica[]
+}
+
+// ─────────────────────────────────────────────
+// RBAC: ROLES Y PERMISOS
+// ─────────────────────────────────────────────
+
+model Rol {
+  id            String   @id @default(cuid())
+  veterinariaId String
+  nombre        String
+  descripcion   String?
+  esAdmin       Boolean  @default(false)
+  activo        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  veterinaria Veterinaria  @relation(fields: [veterinariaId], references: [id])
+  permisos    RolPermiso[]
+  usuarios    UsuarioRol[]
+
+  @@unique([veterinariaId, nombre])
+}
+
+model Permiso {
+  id      String @id @default(cuid())
+  codigo  String @unique
+  nombre  String
+  modulo  String
+
+  roles RolPermiso[]
+}
+
+model RolPermiso {
+  rolId     String
+  permisoId String
+
+  rol     Rol     @relation(fields: [rolId], references: [id], onDelete: Cascade)
+  permiso Permiso @relation(fields: [permisoId], references: [id], onDelete: Cascade)
+
+  @@id([rolId, permisoId])
+}
+
+model UsuarioRol {
+  usuarioId String
+  rolId     String
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  rol     Rol     @relation(fields: [rolId], references: [id], onDelete: Cascade)
+
+  @@id([usuarioId, rolId])
+}
+
+// ─────────────────────────────────────────────
+// USUARIOS
 // ─────────────────────────────────────────────
 
 model Usuario {
-  id          String   @id @default(cuid())
-  nombre      String
-  apellido    String
-  email       String   @unique
-  password    String
-  rol         String   @default("RECEPCIONISTA")
-  telefono    String?
-  avatar      String?
-  activo      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(cuid())
+  veterinariaId String
+  nombre        String
+  apellido      String
+  email         String   @unique
+  password      String
+  telefono      String?
+  avatar        String?
+  activo        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
+  veterinaria       Veterinaria        @relation(fields: [veterinariaId], references: [id])
+  roles             UsuarioRol[]
   turnos            Turno[]            @relation("profesionalTurnos")
   consultas         Consulta[]         @relation("veterinarioConsultas")
   serviciosEstetica ServicioEstetica[] @relation("estilistaServicios")
@@ -35,31 +117,36 @@ model Usuario {
 // ─────────────────────────────────────────────
 
 model Cliente {
-  id             String   @id @default(cuid())
-  usuarioId      String?  @unique
-  nombre         String
-  apellido       String
-  dni            String?  @unique
-  email          String?
-  telefono       String
-  telefonoAlt    String?
-  direccion      String?
-  ciudad         String?
-  notas          String?
-  fidelidad      Int      @default(0)
-  saldoCuenta    Float    @default(0)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id            String   @id @default(cuid())
+  veterinariaId String
+  usuarioId     String?  @unique
+  nombre        String
+  apellido      String
+  dni           String?
+  email         String?
+  telefono      String
+  telefonoAlt   String?
+  direccion     String?
+  ciudad        String?
+  notas         String?
+  fidelidad     Int      @default(0)
+  saldoCuenta   Float    @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  usuario        Usuario?      @relation(fields: [usuarioId], references: [id])
-  mascotas       Mascota[]
-  turnos         Turno[]
-  facturas       Factura[]
-  presupuestos   Presupuesto[]
+  veterinaria  Veterinaria   @relation(fields: [veterinariaId], references: [id])
+  usuario      Usuario?      @relation(fields: [usuarioId], references: [id])
+  mascotas     Mascota[]
+  turnos       Turno[]
+  facturas     Factura[]
+  presupuestos Presupuesto[]
+
+  @@unique([veterinariaId, dni])
 }
 
 model Mascota {
   id                  String    @id @default(cuid())
+  veterinariaId       String
   clienteId           String
   nombre              String
   especie             String
@@ -77,6 +164,7 @@ model Mascota {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
+  veterinaria       Veterinaria        @relation(fields: [veterinariaId], references: [id])
   cliente           Cliente            @relation(fields: [clienteId], references: [id])
   turnos            Turno[]
   consultas         Consulta[]
@@ -93,6 +181,7 @@ model Mascota {
 
 model Turno {
   id                  String   @id @default(cuid())
+  veterinariaId       String
   mascotaId           String
   clienteId           String
   profesionalId       String?
@@ -106,6 +195,7 @@ model Turno {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
+  veterinaria      Veterinaria      @relation(fields: [veterinariaId], references: [id])
   mascota          Mascota          @relation(fields: [mascotaId], references: [id])
   cliente          Cliente          @relation(fields: [clienteId], references: [id])
   profesional      Usuario?         @relation("profesionalTurnos", fields: [profesionalId], references: [id])
@@ -120,6 +210,7 @@ model Turno {
 
 model Consulta {
   id                     String    @id @default(cuid())
+  veterinariaId          String
   turnoId                String    @unique
   mascotaId              String
   veterinarioId          String
@@ -139,9 +230,10 @@ model Consulta {
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
 
-  turno       Turno    @relation(fields: [turnoId], references: [id])
-  mascota     Mascota  @relation(fields: [mascotaId], references: [id])
-  veterinario Usuario  @relation("veterinarioConsultas", fields: [veterinarioId], references: [id])
+  veterinaria Veterinaria @relation(fields: [veterinariaId], references: [id])
+  turno       Turno       @relation(fields: [turnoId], references: [id])
+  mascota     Mascota     @relation(fields: [mascotaId], references: [id])
+  veterinario Usuario     @relation("veterinarioConsultas", fields: [veterinarioId], references: [id])
   recetas     Receta[]
   estudios    Estudio[]
 }
@@ -215,17 +307,22 @@ model CarnetDigital {
 }
 
 model CamaInternacion {
-  id     String  @id @default(cuid())
-  numero String  @unique
-  sector String?
-  estado String  @default("DISPONIBLE")
-  notas  String?
+  id            String  @id @default(cuid())
+  veterinariaId String
+  numero        String
+  sector        String?
+  estado        String  @default("DISPONIBLE")
+  notas         String?
 
+  veterinaria   Veterinaria   @relation(fields: [veterinariaId], references: [id])
   internaciones Internacion[]
+
+  @@unique([veterinariaId, numero])
 }
 
 model Internacion {
   id            String    @id @default(cuid())
+  veterinariaId String
   mascotaId     String
   camaId        String
   veterinarioId String?
@@ -238,8 +335,9 @@ model Internacion {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  mascota            Mascota              @relation(fields: [mascotaId], references: [id])
-  cama               CamaInternacion      @relation(fields: [camaId], references: [id])
+  veterinaria        Veterinaria            @relation(fields: [veterinariaId], references: [id])
+  mascota            Mascota                @relation(fields: [mascotaId], references: [id])
+  cama               CamaInternacion        @relation(fields: [camaId], references: [id])
   evolucionesDiarias EvolucionInternacion[]
 }
 
@@ -263,6 +361,7 @@ model EvolucionInternacion {
 
 model ServicioEstetica {
   id                String   @id @default(cuid())
+  veterinariaId     String
   turnoId           String   @unique
   mascotaId         String
   estilistId        String?
@@ -278,9 +377,10 @@ model ServicioEstetica {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  turno     Turno    @relation(fields: [turnoId], references: [id])
-  mascota   Mascota  @relation(fields: [mascotaId], references: [id])
-  estilista Usuario? @relation("estilistaServicios", fields: [estilistId], references: [id])
+  veterinaria Veterinaria @relation(fields: [veterinariaId], references: [id])
+  turno       Turno       @relation(fields: [turnoId], references: [id])
+  mascota     Mascota     @relation(fields: [mascotaId], references: [id])
+  estilista   Usuario?    @relation("estilistaServicios", fields: [estilistId], references: [id])
 }
 
 // ─────────────────────────────────────────────
@@ -288,18 +388,23 @@ model ServicioEstetica {
 // ─────────────────────────────────────────────
 
 model BoxGuarderia {
-  id        String  @id @default(cuid())
-  numero    String  @unique
-  tipo      String
-  capacidad Int     @default(1)
-  activo    Boolean @default(true)
-  notas     String?
+  id            String  @id @default(cuid())
+  veterinariaId String
+  numero        String
+  tipo          String
+  capacidad     Int     @default(1)
+  activo        Boolean @default(true)
+  notas         String?
 
-  guarderias Guarderia[]
+  veterinaria Veterinaria @relation(fields: [veterinariaId], references: [id])
+  guarderias  Guarderia[]
+
+  @@unique([veterinariaId, numero])
 }
 
 model Guarderia {
   id                  String    @id @default(cuid())
+  veterinariaId       String
   turnoId             String    @unique
   mascotaId           String?
   boxId               String?
@@ -310,8 +415,9 @@ model Guarderia {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
-  turno            Turno         @relation(fields: [turnoId], references: [id])
-  box              BoxGuarderia? @relation(fields: [boxId], references: [id])
+  veterinaria      Veterinaria      @relation(fields: [veterinariaId], references: [id])
+  turno            Turno            @relation(fields: [turnoId], references: [id])
+  box              BoxGuarderia?    @relation(fields: [boxId], references: [id])
   novedadesDiarias NovedadGuarderia[]
 }
 
@@ -331,25 +437,29 @@ model NovedadGuarderia {
 // ─────────────────────────────────────────────
 
 model Producto {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
+  veterinariaId   String
   nombre          String
   descripcion     String?
   categoria       String
   principioActivo String?
   marca           String?
   proveedor       String?
-  codigoBarra     String?  @unique
-  stockActual     Int      @default(0)
-  stockMinimo     Int      @default(5)
-  precio          Float    @default(0)
-  unidad          String   @default("unidad")
+  codigoBarra     String?
+  stockActual     Int       @default(0)
+  stockMinimo     Int       @default(5)
+  precio          Float     @default(0)
+  unidad          String    @default("unidad")
   vencimiento     DateTime?
-  activo          Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  activo          Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
+  veterinaria     Veterinaria      @relation(fields: [veterinariaId], references: [id])
   movimientos     MovimientoStock[]
   detallesFactura DetalleFactura[]
+
+  @@unique([veterinariaId, codigoBarra])
 }
 
 model MovimientoStock {
@@ -370,22 +480,25 @@ model MovimientoStock {
 // ─────────────────────────────────────────────
 
 model Presupuesto {
-  id          String    @id @default(cuid())
-  clienteId   String
-  descripcion String
-  items       String
-  total       Float
-  validoHasta DateTime?
-  aceptado    Boolean   @default(false)
-  createdAt   DateTime  @default(now())
+  id            String    @id @default(cuid())
+  veterinariaId String
+  clienteId     String
+  descripcion   String
+  items         String
+  total         Float
+  validoHasta   DateTime?
+  aceptado      Boolean   @default(false)
+  createdAt     DateTime  @default(now())
 
-  cliente Cliente  @relation(fields: [clienteId], references: [id])
-  factura Factura?
+  veterinaria Veterinaria @relation(fields: [veterinariaId], references: [id])
+  cliente     Cliente     @relation(fields: [clienteId], references: [id])
+  factura     Factura?
 }
 
 model Factura {
   id               String    @id @default(cuid())
-  numero           String    @unique
+  veterinariaId    String
+  numero           String
   clienteId        String
   presupuestoId    String?   @unique
   estado           String    @default("PENDIENTE")
@@ -399,10 +512,13 @@ model Factura {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
+  veterinaria Veterinaria    @relation(fields: [veterinariaId], references: [id])
   cliente     Cliente        @relation(fields: [clienteId], references: [id])
   presupuesto Presupuesto?   @relation(fields: [presupuestoId], references: [id])
   detalles    DetalleFactura[]
   pagos       Pago[]
+
+  @@unique([veterinariaId, numero])
 }
 
 model DetalleFactura {
@@ -419,13 +535,13 @@ model DetalleFactura {
 }
 
 model Pago {
-  id        String   @id @default(cuid())
-  facturaId String
-  monto     Float
-  medioPago String
+  id         String   @id @default(cuid())
+  facturaId  String
+  monto      Float
+  medioPago  String
   referencia String?
-  fecha     DateTime @default(now())
-  notas     String?
+  fecha      DateTime @default(now())
+  notas      String?
 
   factura Factura @relation(fields: [facturaId], references: [id])
 }

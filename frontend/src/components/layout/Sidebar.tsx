@@ -6,15 +6,15 @@ import {
 import { useAuthStore } from '../../store/authStore';
 
 const navItems = [
-  { to: '/dashboard',     icon: LayoutDashboard, label: 'Dashboard',     roles: ['ADMIN','VETERINARIO','RECEPCIONISTA','ESTILISTA'] },
-  { to: '/clientes',      icon: Users,           label: 'Clientes',      roles: ['ADMIN','VETERINARIO','RECEPCIONISTA'] },
-  { to: '/mascotas',      icon: PawPrint,        label: 'Mascotas',      roles: ['ADMIN','VETERINARIO','RECEPCIONISTA','ESTILISTA'] },
-  { to: '/agenda',        icon: Calendar,        label: 'Agenda',        roles: ['ADMIN','VETERINARIO','RECEPCIONISTA','ESTILISTA'] },
-  { to: '/estetica',      icon: Scissors,        label: 'Estética',      roles: ['ADMIN','ESTILISTA','RECEPCIONISTA'] },
-  { to: '/inventario',    icon: Package,         label: 'Inventario',    roles: ['ADMIN','RECEPCIONISTA','VETERINARIO'] },
-  { to: '/facturacion',   icon: Receipt,         label: 'Facturación',   roles: ['ADMIN','RECEPCIONISTA'] },
-  { to: '/profesionales', icon: UserCog,         label: 'Profesionales', roles: ['ADMIN'] },
-  { to: '/reportes',      icon: BarChart3,       label: 'Reportes',      roles: ['ADMIN'] },
+  { to: '/dashboard',     icon: LayoutDashboard, label: 'Dashboard',     permiso: 'dashboard:read' },
+  { to: '/clientes',      icon: Users,           label: 'Clientes',      permiso: 'clientes:read' },
+  { to: '/mascotas',      icon: PawPrint,        label: 'Mascotas',      permiso: 'mascotas:read' },
+  { to: '/agenda',        icon: Calendar,        label: 'Agenda',        permiso: 'agenda:read' },
+  { to: '/estetica',      icon: Scissors,        label: 'Estética',      permiso: 'estetica:read' },
+  { to: '/inventario',    icon: Package,         label: 'Inventario',    permiso: 'inventario:read' },
+  { to: '/facturacion',   icon: Receipt,         label: 'Facturación',   permiso: 'facturacion:read' },
+  { to: '/profesionales', icon: UserCog,         label: 'Profesionales', permiso: 'usuarios:read' },
+  { to: '/reportes',      icon: BarChart3,       label: 'Reportes',      permiso: 'reportes:read' },
 ];
 
 interface Props {
@@ -23,7 +23,7 @@ interface Props {
 }
 
 export default function Sidebar({ open, onClose }: Props) {
-  const { usuario, logout } = useAuthStore();
+  const { usuario, logout, tienePermiso } = useAuthStore();
 
   return (
     <aside
@@ -60,7 +60,7 @@ export default function Sidebar({ open, onClose }: Props) {
       {/* Navegación */}
       <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
         {navItems
-          .filter(item => !usuario?.rol || item.roles.includes(usuario.rol))
+          .filter(item => tienePermiso(item.permiso))
           .map(({ to, icon: Icon, label }) => (
             <NavLink
               key={to}
@@ -98,6 +98,13 @@ export default function Sidebar({ open, onClose }: Props) {
             </p>
           </div>
         </div>
+        <button
+          type="button"
+          onClick={logout}
+          className="w-full mt-1 px-3 py-2 text-xs text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-left"
+        >
+          Cerrar sesión
+        </button>
       </div>
     </aside>
   );

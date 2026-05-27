@@ -1,9 +1,11 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import prisma from '../config/prisma';
+import { AuthRequest, filtroTenant } from '../middleware/auth.middleware';
 
-export const listar = async (req: Request, res: Response) => {
+export const listar = async (req: AuthRequest, res: Response) => {
   const { buscar, clienteId, especie } = req.query;
-  const where: any = { activo: true };
+  const tenant = filtroTenant(req);
+  const where: any = { ...tenant, activo: true };
   if (clienteId) where.clienteId = String(clienteId);
   if (especie) where.especie = String(especie);
   if (buscar) {
@@ -19,10 +21,11 @@ export const listar = async (req: Request, res: Response) => {
   res.json(mascotas);
 };
 
-export const obtener = async (req: Request, res: Response) => {
+export const obtener = async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
-  const mascota = await prisma.mascota.findUnique({
-    where: { id },
+  const tenant = filtroTenant(req);
+  const mascota = await prisma.mascota.findFirst({
+    where: { id, ...tenant },
     include: {
       cliente: true,
       consultas: {
@@ -51,15 +54,13 @@ const parsearFecha = (valor: any): Date | null => {
   return isNaN(d.getTime()) ? null : d;
 };
 
-// Extrae solo los campos del modelo Mascota (descarta relaciones anidadas que envía el frontend)
 const sanitizarMascota = (body: any) => {
-  const CAMPOS_MASCOTA = [
+  const CAMPOS = [
     'clienteId', 'nombre', 'especie', 'raza', 'sexo', 'fechaNacimiento',
-    'color', 'peso', 'microchip', 'foto', 'esterilizado',
-    'alergias', 'condicionesCronicas', 'activo',
+    'color', 'peso', 'microchip', 'foto', 'esterilizado', 'alergias', 'condicionesCronicas', 'activo',
   ];
   const data: any = {};
-  for (const campo of CAMPOS_MASCOTA) {
+  for (const campo of CAMPOS) {
     if (campo in body) data[campo] = body[campo];
   }
   data.fechaNacimiento = parsearFecha(data.fechaNacimiento);
@@ -68,11 +69,12 @@ const sanitizarMascota = (body: any) => {
   return data;
 };
 
-export const crear = async (req: Request, res: Response) => {
+export const crear = async (req: AuthRequest, res: Response) => {
+  const tenant = filtroTenant(req);
   try {
     const data = sanitizarMascota(req.body);
     const mascota = await prisma.mascota.create({
-      data,
+      data: { ...tenant, ...data },
       include: { cliente: { select: { nombre: true, apellido: true } } },
     });
     res.status(201).json(mascota);
@@ -82,9 +84,13 @@ export const crear = async (req: Request, res: Response) => {
   }
 };
 
-export const actualizar = async (req: Request, res: Response) => {
+export const actualizar = async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
+  const tenant = filtroTenant(req);
   try {
+    const existing = await prisma.mascota.findFirst({ where: { id, ...tenant } });
+    if (!existing) return res.status(404).json({ error: 'Mascota no encontrada' });
+
     const data = sanitizarMascota(req.body);
     const mascota = await prisma.mascota.update({ where: { id }, data });
     res.json(mascota);
@@ -94,8 +100,11 @@ export const actualizar = async (req: Request, res: Response) => {
   }
 };
 
-export const darDeBaja = async (req: Request, res: Response) => {
+export const darDeBaja = async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
+  const tenant = filtroTenant(req);
+  const existing = await prisma.mascota.findFirst({ where: { id, ...tenant } });
+  if (!existing) return res.status(404).json({ error: 'Mascota no encontrada' });
   await prisma.mascota.update({ where: { id }, data: { activo: false } });
   res.json({ mensaje: 'Mascota dada de baja' });
 };
@@ -104,8 +113,13 @@ const parseJsonField = (value: string, fallback: any[] = []) => {
   try { return JSON.parse(value || '[]'); } catch { return fallback; }
 };
 
-export const historialClinico = async (req: Request, res: Response) => {
+export const historialClinico = async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
+  const tenant = filtroTenant(req);
+
+  const mascota = await prisma.mascota.findFirst({ where: { id, ...tenant } });
+  if (!mascota) return res.status(404).json({ error: 'Mascota no encontrada' });
+
   const [consultas, vacunas, desparasitaciones, rawEstetica] = await Promise.all([
     prisma.consulta.findMany({
       where: { mascotaId: id },

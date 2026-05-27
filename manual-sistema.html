@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manual de Usuario — VetClinic</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; line-height: 1.6; background: #fff; }
+
+  @media print {
+    .no-print { display: none; }
+    .page-break { page-break-before: always; }
+    body { font-size: 11pt; }
+    h1 { font-size: 22pt; }
+    h2 { font-size: 15pt; }
+    h3 { font-size: 12pt; }
+  }
+
+  .cover {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0f766e 0%, #0891b2 100%);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center; color: white; padding: 40px;
+  }
+  .cover .logo { font-size: 80px; margin-bottom: 20px; }
+  .cover h1 { font-size: 42px; font-weight: 800; margin-bottom: 10px; }
+  .cover .subtitle { font-size: 20px; opacity: 0.85; margin-bottom: 40px; }
+  .cover .meta { opacity: 0.7; font-size: 14px; }
+
+  .content { max-width: 860px; margin: 0 auto; padding: 40px 30px; }
+
+  h2 { font-size: 24px; font-weight: 700; color: #0f766e; margin: 40px 0 16px;
+       padding-bottom: 8px; border-bottom: 2px solid #ccfbf1; }
+  h3 { font-size: 17px; font-weight: 600; color: #0891b2; margin: 24px 0 10px; }
+  h4 { font-size: 14px; font-weight: 600; color: #1e293b; margin: 16px 0 8px; }
+  p { margin-bottom: 12px; color: #374151; }
+
+  .info-box {
+    background: #f0fdfa; border-left: 4px solid #0f766e;
+    padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 16px 0;
+  }
+  .warning-box {
+    background: #fffbeb; border-left: 4px solid #f59e0b;
+    padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 16px 0;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+  th { background: #0f766e; color: white; padding: 10px 12px; text-align: left; }
+  td { padding: 9px 12px; border-bottom: 1px solid #e2e8f0; }
+  tr:nth-child(even) td { background: #f8fafc; }
+
+  .badge {
+    display: inline-block; padding: 3px 10px; border-radius: 20px;
+    font-size: 12px; font-weight: 600; margin: 2px;
+  }
+  .badge-green { background: #d1fae5; color: #065f46; }
+  .badge-blue  { background: #dbeafe; color: #1e40af; }
+  .badge-amber { background: #fef3c7; color: #92400e; }
+  .badge-purple{ background: #ede9fe; color: #5b21b6; }
+  .badge-red   { background: #fee2e2; color: #991b1b; }
+
+  .step { display: flex; gap: 16px; margin: 12px 0; align-items: flex-start; }
+  .step-num {
+    min-width: 32px; height: 32px; background: #0f766e; color: white;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 14px; flex-shrink: 0;
+  }
+  .step-content { padding-top: 4px; }
+
+  .module-card {
+    border: 1px solid #e2e8f0; border-radius: 10px;
+    padding: 20px; margin: 16px 0;
+    border-top: 4px solid #0f766e;
+  }
+  .module-card h3 { margin-top: 0; }
+
+  .url-box {
+    background: #1e293b; color: #86efac; padding: 12px 16px;
+    border-radius: 8px; font-family: monospace; font-size: 14px; margin: 8px 0;
+  }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  @media print { .grid-2 { grid-template-columns: 1fr 1fr; } }
+
+  .cred-card {
+    background: #f8fafc; border: 1px solid #e2e8f0;
+    border-radius: 8px; padding: 16px; text-align: center;
+  }
+  .cred-card .rol { font-size: 13px; color: #64748b; margin-bottom: 6px; }
+  .cred-card .email { font-weight: 600; color: #0f766e; font-size: 14px; }
+  .cred-card .pass { font-family: monospace; color: #374151; font-size: 13px; margin-top: 4px; }
+
+  ul { margin: 8px 0 12px 20px; }
+  ul li { margin-bottom: 4px; color: #374151; }
+
+  .toc { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 24px; margin: 24px 0; }
+  .toc h3 { color: #0f766e; margin-top: 0; }
+  .toc ol { margin-left: 20px; }
+  .toc li { margin: 6px 0; color: #374151; }
+
+  .footer { text-align: center; color: #94a3b8; font-size: 12px; margin-top: 60px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
+
+  .print-btn {
+    position: fixed; bottom: 30px; right: 30px;
+    background: #0f766e; color: white; border: none;
+    padding: 14px 24px; border-radius: 8px; font-size: 15px;
+    cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    font-weight: 600;
+  }
+  .print-btn:hover { background: #0d6660; }
+</style>
+</head>
+<body>
+
+<!-- PORTADA -->
+<div class="cover">
+  <div class="logo">🐾</div>
+  <h1>VetClinic</h1>
+  <div class="subtitle">Sistema de Gestión Integral para Clínica Veterinaria</div>
+  <div class="meta">Manual de Usuario &nbsp;·&nbsp; Versión 1.0 &nbsp;·&nbsp; Mayo 2026</div>
+</div>
+
+<div class="content">
+
+  <!-- ÍNDICE -->
+  <div class="toc">
+    <h3>Contenido</h3>
+    <ol>
+      <li>Acceso al sistema</li>
+      <li>Roles y permisos</li>
+      <li>Dashboard — Panel principal</li>
+      <li>Módulo Clientes</li>
+      <li>Módulo Mascotas</li>
+      <li>Módulo Agenda</li>
+      <li>Módulo Consulta Clínica</li>
+      <li>Módulo Estética / Grooming</li>
+      <li>Módulo Inventario</li>
+      <li>Módulo Facturación</li>
+      <li>Módulo Reportes</li>
+      <li>Infraestructura y datos</li>
+    </ol>
+  </div>
+
+  <!-- ACCESO -->
+  <h2>1. Acceso al sistema</h2>
+  <p>El sistema es accesible desde cualquier dispositivo con conexión a internet, sin necesidad de instalar ningún programa.</p>
+
+  <div class="url-box">🌐 https://vetclinic-sistema.vercel.app</div>
+
+  <h3>Credenciales de demo</h3>
+  <div class="grid-2">
+    <div class="cred-card">
+      <div class="rol">Administrador</div>
+      <div class="email">admin@vetclinic.com</div>
+      <div class="pass">admin123</div>
+    </div>
+    <div class="cred-card">
+      <div class="rol">Veterinaria</div>
+      <div class="email">dra.garcia@vetclinic.com</div>
+      <div class="pass">vet123</div>
+    </div>
+    <div class="cred-card">
+      <div class="rol">Estilista / Groomer</div>
+      <div class="email">lucas@vetclinic.com</div>
+      <div class="pass">groomer123</div>
+    </div>
+    <div class="cred-card">
+      <div class="rol">Recepcionista</div>
+      <div class="email">sofia@vetclinic.com</div>
+      <div class="pass">recep123</div>
+    </div>
+  </div>
+
+  <div class="warning-box">
+    <strong>⚠️ Importante:</strong> Se recomienda cambiar todas las contraseñas antes de usar el sistema con datos reales. Ir a perfil de usuario → Cambiar contraseña.
+  </div>
+
+  <!-- ROLES -->
+  <div class="page-break"></div>
+  <h2>2. Roles y permisos</h2>
+  <p>Cada usuario tiene un rol que determina a qué módulos puede acceder:</p>
+
+  <table>
+    <tr>
+      <th>Módulo</th>
+      <th>Admin</th>
+      <th>Veterinario</th>
+      <th>Recepcionista</th>
+      <th>Estilista</th>
+    </tr>
+    <tr><td>Dashboard</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+    <tr><td>Clientes</td><td>✅</td><td>✅</td><td>✅</td><td>—</td></tr>
+    <tr><td>Mascotas</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+    <tr><td>Agenda</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+    <tr><td>Consulta Clínica</td><td>✅</td><td>✅</td><td>—</td><td>—</td></tr>
+    <tr><td>Estética</td><td>✅</td><td>—</td><td>✅</td><td>✅</td></tr>
+    <tr><td>Inventario</td><td>✅</td><td>✅</td><td>✅</td><td>—</td></tr>
+    <tr><td>Facturación</td><td>✅</td><td>—</td><td>✅</td><td>—</td></tr>
+    <tr><td>Reportes</td><td>✅</td><td>—</td><td>—</td><td>—</td></tr>
+  </table>
+
+  <!-- DASHBOARD -->
+  <h2>3. Dashboard — Panel principal</h2>
+  <p>Es la pantalla de inicio. Muestra un resumen en tiempo real de la actividad de la clínica.</p>
+
+  <div class="module-card">
+    <h3>📊 ¿Qué se ve en el Dashboard?</h3>
+    <ul>
+      <li><strong>Métricas del día:</strong> cantidad de turnos, ingresos del día, pacientes nuevos y stock bajo en inventario.</li>
+      <li><strong>Turnos de hoy:</strong> lista de todos los turnos del día con estado (pendiente, en curso, finalizado). Permite iniciar o editar cada turno directamente.</li>
+      <li><strong>Gráfico de ingresos:</strong> evolución de facturación de los últimos 7 días.</li>
+      <li><strong>Actualización en tiempo real:</strong> los cambios hechos por cualquier usuario se reflejan automáticamente sin recargar la página.</li>
+    </ul>
+  </div>
+
+  <h3>Acciones desde el Dashboard</h3>
+  <div class="step">
+    <div class="step-num">▶</div>
+    <div class="step-content"><strong>Iniciar turno:</strong> botón de play verde. Cambia el estado a "En curso" y abre directamente la ficha de la mascota.</div>
+  </div>
+  <div class="step">
+    <div class="step-num">✏</div>
+    <div class="step-content"><strong>Editar turno:</strong> botón de lápiz azul. Permite cambiar fecha, hora, motivo o profesional asignado.</div>
+  </div>
+
+  <!-- CLIENTES -->
+  <div class="page-break"></div>
+  <h2>4. Módulo Clientes</h2>
+  <p>Gestión de los dueños de mascotas registrados en la clínica.</p>
+
+  <div class="module-card">
+    <h3>👤 Información que se registra</h3>
+    <ul>
+      <li>Nombre y apellido</li>
+      <li>DNI / documento</li>
+      <li>Teléfono y email</li>
+      <li>Dirección</li>
+      <li>Mascotas asociadas</li>
+    </ul>
+  </div>
+
+  <h3>Cómo agregar un cliente</h3>
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-content">Ir a <strong>Clientes</strong> en el menú lateral.</div>
+  </div>
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-content">Clic en el botón <strong>"Nuevo cliente"</strong> (esquina superior derecha).</div>
+  </div>
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-content">Completar el formulario y guardar.</div>
+  </div>
+
+  <div class="info-box">
+    💡 Desde la lista de clientes se puede buscar por nombre, apellido, DNI o teléfono. También se puede ver el historial de visitas de todas sus mascotas.
+  </div>
+
+  <!-- MASCOTAS -->
+  <h2>5. Módulo Mascotas</h2>
+  <p>Cada mascota tiene su propia ficha clínica completa.</p>
+
+  <div class="module-card">
+    <h3>🐶 Ficha de la mascota incluye:</h3>
+    <ul>
+      <li><strong>Datos básicos:</strong> nombre, especie, raza, edad, peso, sexo, color, microchip.</li>
+      <li><strong>Historial clínico:</strong> todas las consultas veterinarias con diagnósticos, tratamientos y recetas.</li>
+      <li><strong>Vacunas:</strong> registro de vacunaciones con fecha y próximo vencimiento.</li>
+      <li><strong>Estética:</strong> historial de visitas al grooming con fotos antes/después.</li>
+      <li><strong>Turnos:</strong> todos los turnos pasados y futuros de la mascota.</li>
+    </ul>
+  </div>
+
+  <!-- AGENDA -->
+  <div class="page-break"></div>
+  <h2>6. Módulo Agenda</h2>
+  <p>Gestión visual de todos los turnos de la clínica.</p>
+
+  <div class="module-card">
+    <h3>📅 Vistas disponibles</h3>
+    <ul>
+      <li><strong>Vista semanal (escritorio):</strong> grilla de 7 días con franjas horarias. Muestra todos los turnos por hora y día.</li>
+      <li><strong>Vista diaria (móvil):</strong> lista de turnos del día seleccionado. Se navega entre días deslizando los chips de fechas.</li>
+    </ul>
+  </div>
+
+  <h3>Cómo crear un turno</h3>
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-content">Clic en <strong>"Nuevo turno"</strong> o en cualquier celda vacía de la grilla semanal.</div>
+  </div>
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-content">Seleccionar cliente → mascota → fecha y hora → motivo de consulta → profesional.</div>
+  </div>
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-content">Guardar. El turno aparece inmediatamente en la grilla para todos los usuarios.</div>
+  </div>
+
+  <h3>Estados de un turno</h3>
+  <table>
+    <tr><th>Estado</th><th>Descripción</th></tr>
+    <tr><td><span class="badge badge-amber">PENDIENTE</span></td><td>Turno reservado, aún no iniciado</td></tr>
+    <tr><td><span class="badge badge-blue">EN CURSO</span></td><td>La consulta está en progreso</td></tr>
+    <tr><td><span class="badge badge-green">FINALIZADO</span></td><td>Consulta completada</td></tr>
+    <tr><td><span class="badge badge-red">CANCELADO</span></td><td>Turno cancelado</td></tr>
+  </table>
+
+  <!-- CONSULTA CLÍNICA -->
+  <h2>7. Módulo Consulta Clínica</h2>
+  <p>Se accede desde el Dashboard al iniciar un turno, o desde la ficha de la mascota.</p>
+
+  <div class="module-card">
+    <h3>🩺 Formulario de consulta incluye:</h3>
+    <ul>
+      <li><strong>Anamnesis:</strong> motivo de la consulta y síntomas referidos.</li>
+      <li><strong>Examen físico:</strong> peso, temperatura, frecuencia cardíaca y respiratoria, condición corporal.</li>
+      <li><strong>Diagnóstico:</strong> descripción del diagnóstico.</li>
+      <li><strong>Tratamiento:</strong> indicaciones y medicación.</li>
+      <li><strong>Receta:</strong> lista de medicamentos con dosis, vía de administración y duración.</li>
+      <li><strong>Estudios:</strong> solicitud de análisis o estudios complementarios (laboratorio, radiografía, ecografía).</li>
+      <li><strong>Vacunas aplicadas:</strong> registro de vacunas administradas en la consulta.</li>
+    </ul>
+  </div>
+
+  <div class="info-box">
+    💡 Al guardar la consulta, toda la información queda registrada automáticamente en el historial clínico de la mascota.
+  </div>
+
+  <!-- ESTÉTICA -->
+  <div class="page-break"></div>
+  <h2>8. Módulo Estética / Grooming</h2>
+  <p>Gestión del servicio de peluquería y grooming mediante un tablero Kanban visual.</p>
+
+  <div class="module-card">
+    <h3>✂️ Flujo de trabajo Kanban</h3>
+    <p>Las tarjetas de las mascotas avanzan de izquierda a derecha:</p>
+    <table>
+      <tr>
+        <td><span class="badge badge-amber">EN COLA</span></td>
+        <td>Mascota esperando ser atendida</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-blue">EN PROCESO</span></td>
+        <td>Grooming en curso</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-green">LISTO PARA RETIRAR</span></td>
+        <td>Servicio terminado, esperando al dueño</td>
+      </tr>
+    </table>
+  </div>
+
+  <h3>Cómo registrar un servicio de estética</h3>
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-content">Ir al módulo <strong>Estética</strong>.</div>
+  </div>
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-content">Clic en <strong>"Nuevo servicio"</strong>. Seleccionar el turno asociado, la mascota y los servicios a realizar (baño, corte, etc.).</div>
+  </div>
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-content">La tarjeta aparece en la columna <strong>EN COLA</strong>. Arrastrarla o usar el botón para avanzar el estado.</div>
+  </div>
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-content">Al finalizar, el servicio queda registrado en el historial de la mascota.</div>
+  </div>
+
+  <!-- INVENTARIO -->
+  <h2>9. Módulo Inventario</h2>
+  <p>Control de stock de medicamentos, insumos y productos de la clínica.</p>
+
+  <div class="module-card">
+    <h3>📦 Funcionalidades</h3>
+    <ul>
+      <li><strong>Lista de productos:</strong> nombre, categoría, marca, stock actual, precio de costo y venta.</li>
+      <li><strong>Alertas de stock bajo:</strong> se muestran automáticamente los productos que llegaron al stock mínimo configurado.</li>
+      <li><strong>Movimientos:</strong> registro de entradas y salidas de stock con motivo.</li>
+      <li><strong>Búsqueda:</strong> filtro por nombre, categoría o proveedor.</li>
+    </ul>
+  </div>
+
+  <h3>Cómo registrar un movimiento de stock</h3>
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-content">Seleccionar el producto en la lista.</div>
+  </div>
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-content">Clic en <strong>"Movimiento"</strong> → elegir tipo (entrada/salida) → cantidad → motivo.</div>
+  </div>
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-content">Guardar. El stock se actualiza automáticamente.</div>
+  </div>
+
+  <!-- FACTURACIÓN -->
+  <div class="page-break"></div>
+  <h2>10. Módulo Facturación</h2>
+  <p>Gestión de cobros, facturas y caja diaria.</p>
+
+  <div class="module-card">
+    <h3>💰 Funcionalidades</h3>
+    <ul>
+      <li><strong>Nueva factura:</strong> asociar a un cliente, agregar ítems (servicios o productos), aplicar descuentos.</li>
+      <li><strong>Medios de pago:</strong> efectivo, tarjeta de débito, tarjeta de crédito, transferencia.</li>
+      <li><strong>Estado de facturas:</strong> pendiente, pagada, cancelada.</li>
+      <li><strong>Caja del día:</strong> resumen de ingresos del día agrupado por medio de pago.</li>
+      <li><strong>Historial:</strong> búsqueda de facturas por fecha, cliente o número.</li>
+    </ul>
+  </div>
+
+  <h3>Cómo emitir una factura</h3>
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-content">Ir a <strong>Facturación</strong> → clic en <strong>"Nueva factura"</strong>.</div>
+  </div>
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-content">Seleccionar el cliente y agregar los ítems del servicio o productos vendidos.</div>
+  </div>
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-content">Elegir el medio de pago y guardar.</div>
+  </div>
+
+  <!-- REPORTES -->
+  <h2>11. Módulo Reportes</h2>
+  <p>Disponible solo para el rol Administrador. Muestra estadísticas y tendencias de la clínica.</p>
+
+  <div class="module-card">
+    <h3>📈 Reportes disponibles</h3>
+    <ul>
+      <li><strong>Ingresos por período:</strong> gráfico de facturación por semana o mes.</li>
+      <li><strong>Turnos por estado:</strong> distribución de turnos completados vs cancelados.</li>
+      <li><strong>Servicios más frecuentes:</strong> qué tipo de consultas o servicios se realizan más.</li>
+      <li><strong>Especies atendidas:</strong> distribución por tipo de animal (perros, gatos, etc.).</li>
+    </ul>
+  </div>
+
+  <!-- INFRAESTRUCTURA -->
+  <div class="page-break"></div>
+  <h2>12. Infraestructura y datos</h2>
+
+  <h3>¿Dónde están los datos?</h3>
+  <p>El sistema funciona completamente en la nube. No se guarda nada en la computadora local.</p>
+
+  <table>
+    <tr><th>Componente</th><th>Servicio</th><th>Plan</th></tr>
+    <tr><td>Frontend (interfaz web)</td><td>Vercel</td><td>Gratis</td></tr>
+    <tr><td>Backend (servidor API)</td><td>Render</td><td>Gratis</td></tr>
+    <tr><td>Base de datos</td><td>Neon PostgreSQL</td><td>Gratis</td></tr>
+  </table>
+
+  <div class="warning-box">
+    <strong>⚠️ Importante sobre Render Free:</strong> El servidor se "duerme" si no recibe solicitudes por 15 minutos. La primera solicitud tras la inactividad puede demorar hasta 50 segundos. Se recomienda configurar <strong>UptimeRobot</strong> para hacer ping al servidor cada 14 minutos y evitar este comportamiento.
+    <br><br>
+    URL para monitorear: <code>https://vetclinic-api-y9r0.onrender.com/api/health</code>
+  </div>
+
+  <h3>Seguridad</h3>
+  <ul>
+    <li>Las contraseñas se almacenan con hash bcrypt (nunca en texto plano).</li>
+    <li>La comunicación usa HTTPS (certificado SSL automático).</li>
+    <li>La autenticación usa tokens JWT con expiración de 7 días.</li>
+    <li>Cada rol tiene acceso restringido a sus módulos correspondientes.</li>
+  </ul>
+
+  <h3>Backup y código fuente</h3>
+  <p>El código fuente está respaldado en GitHub:</p>
+  <div class="url-box">🔗 https://github.com/soporteobando-ai/vetclinic-sistema</div>
+  <p>La base de datos es gestionada por Neon, que incluye backups automáticos en su plan gratuito.</p>
+
+  <h3>Soporte técnico</h3>
+  <p>Para soporte o modificaciones al sistema, contactar al desarrollador. Los datos de acceso a los servicios cloud (Render, Vercel, Neon, GitHub) deben guardarse en un lugar seguro.</p>
+
+  <div class="footer">
+    VetClinic — Sistema de Gestión Veterinaria &nbsp;·&nbsp; v1.0 &nbsp;·&nbsp; Mayo 2026<br>
+    Documento generado para uso interno de la clínica
+  </div>
+
+</div>
+
+<button class="print-btn no-print" onclick="window.print()">🖨️ Guardar como PDF</button>
+
+</body>
+</html>

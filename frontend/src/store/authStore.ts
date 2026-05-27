@@ -10,11 +10,12 @@ interface AuthState {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   toggleModoOscuro: () => void;
+  tienePermiso: (codigo: string) => boolean;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       usuario: null,
       token: null,
       modoOscuro: false,
@@ -36,6 +37,13 @@ export const useAuthStore = create<AuthState>()(
           document.documentElement.classList.toggle('dark', nuevoModo);
           return { modoOscuro: nuevoModo };
         });
+      },
+
+      tienePermiso: (codigo: string) => {
+        const { usuario } = get();
+        if (!usuario) return false;
+        if (usuario.esAdmin) return true;
+        return usuario.permisos?.includes(codigo) ?? false;
       },
     }),
     {

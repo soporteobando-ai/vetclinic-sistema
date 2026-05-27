@@ -1,22 +1,22 @@
 import { Router } from 'express';
-import { autenticar } from '../middleware/auth.middleware';
+import { autenticar, verificarPermiso, filtroTenant, AuthRequest } from '../middleware/auth.middleware';
 import prisma from '../config/prisma';
 
 export const esteticaRoutes = Router();
 
-// Helper: parsear servicios almacenados como JSON string
 const parsarServicios = (s: any) => ({
   ...s,
-  servicios: (() => { try { return JSON.parse(s.servicios || '[]'); } catch { return []; } })(),
-  fotosAntes: (() => { try { return JSON.parse(s.fotosAntes || '[]'); } catch { return []; } })(),
+  servicios:    (() => { try { return JSON.parse(s.servicios    || '[]'); } catch { return []; } })(),
+  fotosAntes:   (() => { try { return JSON.parse(s.fotosAntes   || '[]'); } catch { return []; } })(),
   fotosDespues: (() => { try { return JSON.parse(s.fotosDespues || '[]'); } catch { return []; } })(),
 });
 
 esteticaRoutes.use(autenticar);
 
-esteticaRoutes.get('/', async (req, res) => {
+esteticaRoutes.get('/', verificarPermiso('estetica:read'), async (req: AuthRequest, res) => {
   const { estado } = req.query;
-  const where: any = {};
+  const tenant = filtroTenant(req);
+  const where: any = { ...tenant };
   if (estado) where.estadoGrooming = String(estado);
 
   const servicios = await prisma.servicioEstetica.findMany({
@@ -31,37 +31,40 @@ esteticaRoutes.get('/', async (req, res) => {
   res.json(servicios.map(parsarServicios));
 });
 
-esteticaRoutes.post('/', async (req, res) => {
+esteticaRoutes.post('/', verificarPermiso('estetica:write'), async (req: AuthRequest, res) => {
+  const tenant = filtroTenant(req);
   try {
-    const body = { ...req.body };
+    const body = { ...req.body, ...tenant };
     if (Array.isArray(body.servicios)) body.servicios = JSON.stringify(body.servicios);
     const servicio = await prisma.servicioEstetica.create({
       data: body,
       include: { mascota: true, turno: true },
     });
     res.status(201).json(parsarServicios(servicio));
-  } catch (e) {
+  } catch {
     res.status(500).json({ error: 'Error al crear servicio de estética' });
   }
 });
 
-esteticaRoutes.get('/:id', async (req, res) => {
-  const servicio = await prisma.servicioEstetica.findUnique({
-    where: { id: req.params.id },
+esteticaRoutes.get('/:id', verificarPermiso('estetica:read'), async (req: AuthRequest, res) => {
+  const tenant = filtroTenant(req);
+  const servicio = await prisma.servicioEstetica.findFirst({
+    where: { id: req.params.id, ...tenant },
     include: { mascota: true, turno: { include: { cliente: true } }, estilista: true },
   });
   if (!servicio) return res.status(404).json({ error: 'Servicio no encontrado' });
   res.json(parsarServicios(servicio));
 });
 
-esteticaRoutes.put('/:id', async (req, res) => {
+esteticaRoutes.put('/:id', verificarPermiso('estetica:write'), async (req: AuthRequest, res) => {
+  const tenant = filtroTenant(req);
   try {
+    const existing = await prisma.servicioEstetica.findFirst({ where: { id: req.params.id, ...tenant } });
+    if (!existing) return res.status(404).json({ error: 'Servicio no encontrado' });
+
     const body = { ...req.body };
     if (Array.isArray(body.servicios)) body.servicios = JSON.stringify(body.servicios);
-    const servicio = await prisma.servicioEstetica.update({
-      where: { id: req.params.id },
-      data: body,
-    });
+    const servicio = await prisma.servicioEstetica.update({ where: { id: req.params.id }, data: body });
 
     if (req.body.estadoGrooming === 'LISTO_RETIRAR') {
       const io = (req as any).io;
@@ -74,9 +77,13 @@ esteticaRoutes.put('/:id', async (req, res) => {
   }
 });
 
-esteticaRoutes.patch('/:id/estado', async (req, res) => {
+esteticaRoutes.patch('/:id/estado', verificarPermiso('estetica:write'), async (req: AuthRequest, res) => {
+  const tenant = filtroTenant(req);
   const { estadoGrooming } = req.body;
   try {
+    const existing = await prisma.servicioEstetica.findFirst({ where: { id: req.params.id, ...tenant } });
+    if (!existing) return res.status(404).json({ error: 'Servicio no encontrado' });
+
     const servicio = await prisma.servicioEstetica.update({
       where: { id: req.params.id },
       data: { estadoGrooming },

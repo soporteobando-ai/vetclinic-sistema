@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { autenticar, autorizar } from '../middleware/auth.middleware';
+import { autenticar, verificarPermiso } from '../middleware/auth.middleware';
 import {
   listarProductos, crearProducto, actualizarProducto,
   registrarMovimiento, getMovimientos, getVencimientosProximos
@@ -8,9 +8,9 @@ import {
 export const inventarioRoutes = Router();
 
 inventarioRoutes.use(autenticar);
-inventarioRoutes.get('/', listarProductos);
-inventarioRoutes.post('/', autorizar('ADMIN', 'RECEPCIONISTA'), crearProducto);
-inventarioRoutes.put('/:id', autorizar('ADMIN', 'RECEPCIONISTA'), actualizarProducto);
-inventarioRoutes.get('/vencimientos', getVencimientosProximos);
-inventarioRoutes.post('/movimiento', autorizar('ADMIN', 'RECEPCIONISTA', 'VETERINARIO'), registrarMovimiento);
-inventarioRoutes.get('/:productoId/movimientos', getMovimientos);
+inventarioRoutes.get('/',                        verificarPermiso('inventario:read'),  listarProductos);
+inventarioRoutes.post('/',                       verificarPermiso('inventario:write'), crearProducto);
+inventarioRoutes.put('/:id',                     verificarPermiso('inventario:write'), actualizarProducto);
+inventarioRoutes.get('/vencimientos',            verificarPermiso('inventario:read'),  getVencimientosProximos);
+inventarioRoutes.post('/movimiento',             verificarPermiso('inventario:write'), registrarMovimiento);
+inventarioRoutes.get('/:productoId/movimientos', verificarPermiso('inventario:read'),  getMovimientos);

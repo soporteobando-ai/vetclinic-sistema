@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"c:\\\\CLAUDE\\\\Veterinaria\" -Force -Recurse -ErrorAction SilentlyContinue)",
+      "Bash(Select-Object FullName)",
+      "Read(//c/CLAUDE/**)",
+      "PowerShell(\\(Get-ChildItem -Path \"c:\\\\CLAUDE\\\\Veterinaria\" -Force | Measure-Object\\).Count; dir \"c:\\\\CLAUDE\\\\Veterinaria\" /s /a)",
+      "PowerShell(\\(Get-ChildItem -Path \"c:\\\\CLAUDE\\\\Veterinaria\" -Force\\).Count)",
+      "Bash(npm --version)",
+      "Bash(docker --version)",
+      "Bash(docker-compose --version)",
+      "Bash(psql --version)",
+      "Bash(pg_isready)",
+      "Bash(Get-Service -Name postgresql*)",
+      "Bash(Select-Object Name,Status)",
+      "Bash(Get-Service -Name *postgres*)",
+      "Bash(npm install *)",
+      "Bash(npx ts-node *)",
+      "Bash(curl -s http://localhost:3001/api/health)",
+      "Bash(node -e ' *)",
+      "Bash(curl -s http://localhost:3003/api/health)"
+    ]
+  }
+}
