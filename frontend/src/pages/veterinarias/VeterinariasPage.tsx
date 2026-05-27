@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { veterinariasApi } from '../../services/api';
+import { veterinariasApi, usuariosApi } from '../../services/api';
 import { useForm } from 'react-hook-form';
 import {
   Building2, Plus, Pencil, X, Loader2, Power, PowerOff,
@@ -127,89 +127,199 @@ function ModalVeterinaria({ inicial, onClose, onSuccess }: ModalVetProps) {
   );
 }
 
+// ─── Modal nuevo usuario (desde panel super-admin) ────────────────────────────
+
+interface ModalNuevoUsuarioProps {
+  vetId: string;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+function ModalNuevoUsuario({ vetId, onClose, onSuccess }: ModalNuevoUsuarioProps) {
+  const [loading, setLoading] = useState(false);
+  const { register, handleSubmit, formState: { errors } } = useForm();
+
+  const { data: roles = [] } = useQuery<any[]>({
+    queryKey: ['roles', vetId],
+    queryFn: () => usuariosApi.listarRoles(vetId),
+  });
+
+  const onSubmit = async (data: any) => {
+    setLoading(true);
+    try {
+      await usuariosApi.crear({ ...data, veterinariaId: vetId, rolId: data.rolId || undefined });
+      toast.success('Usuario creado. Contraseña inicial: Veterinaria123');
+      onSuccess();
+    } catch (e: any) {
+      toast.error(e.response?.data?.error || 'Error al crear usuario');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md">
+        <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-gray-800">
+          <h2 className="text-base font-semibold text-gray-900 dark:text-white">Agregar usuario</h2>
+          <button type="button" onClick={onClose} aria-label="Cerrar" className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit(onSubmit)} className="p-5 space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Nombre *</label>
+              <input {...register('nombre', { required: true })} className="input" placeholder="Juan" />
+              {errors.nombre && <p className="text-xs text-red-500 mt-1">Requerido</p>}
+            </div>
+            <div>
+              <label className="label">Apellido *</label>
+              <input {...register('apellido', { required: true })} className="input" placeholder="García" />
+              {errors.apellido && <p className="text-xs text-red-500 mt-1">Requerido</p>}
+            </div>
+          </div>
+          <div>
+            <label className="label">Email *</label>
+            <input {...register('email', { required: true })} type="email" className="input" placeholder="juan@clinica.com" />
+            {errors.email && <p className="text-xs text-red-500 mt-1">Requerido</p>}
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Rol</label>
+              <select {...register('rolId')} className="input">
+                <option value="">Sin rol</option>
+                {roles.filter((r: any) => r.activo).map((r: any) => (
+                  <option key={r.id} value={r.id}>{r.nombre}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="label">Teléfono</label>
+              <input {...register('telefono')} className="input" placeholder="11-1234-5678" />
+            </div>
+          </div>
+          <div>
+            <label className="label">Contraseña</label>
+            <input {...register('password')} type="password" className="input" placeholder="Dejar vacío = Veterinaria123" />
+          </div>
+          <div className="flex gap-3 pt-1">
+            <button type="button" onClick={onClose} className="btn-ghost flex-1 justify-center">Cancelar</button>
+            <button type="submit" disabled={loading} className="btn-primary flex-1 justify-center">
+              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+              Crear usuario
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ─── Panel lateral de usuarios ────────────────────────────────────────────────
 
 function PanelUsuarios({ vetId, vetNombre, onClose }: { vetId: string; vetNombre: string; onClose: () => void }) {
-  const { data, isLoading } = useQuery({
+  const qc = useQueryClient();
+  const [modalNuevo, setModalNuevo] = useState(false);
+
+  const { data, isLoading, refetch } = useQuery({
     queryKey: ['veterinaria-detalle', vetId],
     queryFn: () => veterinariasApi.obtener(vetId),
   });
 
   const usuarios: any[] = data?.usuarios ?? [];
 
+  const handleNuevoExito = () => {
+    setModalNuevo(false);
+    refetch();
+    qc.invalidateQueries({ queryKey: ['veterinarias'] });
+  };
+
   return (
-    <div className="fixed inset-0 z-40 flex">
-      {/* Overlay */}
-      <div className="flex-1 bg-black/40" onClick={onClose} />
+    <>
+      <div className="fixed inset-0 z-40 flex">
+        {/* Overlay */}
+        <div className="flex-1 bg-black/40" onClick={onClose} />
 
-      {/* Drawer */}
-      <div className="w-full max-w-sm bg-white dark:bg-gray-900 shadow-2xl flex flex-col animate-slide-in-right">
-        <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
-          <div>
-            <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Equipo de</p>
-            <h3 className="font-bold text-gray-900 dark:text-white mt-0.5">{vetNombre}</h3>
+        {/* Drawer */}
+        <div className="w-full max-w-sm bg-white dark:bg-gray-900 shadow-2xl flex flex-col">
+          <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Equipo de</p>
+              <h3 className="font-bold text-gray-900 dark:text-white mt-0.5">{vetNombre}</h3>
+            </div>
+            <button type="button" onClick={onClose} aria-label="Cerrar" className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+              <X className="w-4 h-4" />
+            </button>
           </div>
-          <button type="button" onClick={onClose} aria-label="Cerrar" className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
 
-        <div className="flex-1 overflow-y-auto">
-          {isLoading ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
-            </div>
-          ) : usuarios.length === 0 ? (
-            <div className="text-center py-12 px-4">
-              <Users className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-              <p className="text-sm text-gray-400">Sin usuarios registrados</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-100 dark:divide-gray-800">
-              {usuarios.map((u: any) => {
-                const rolNombre = u.roles?.[0]?.rol?.nombre ?? '—';
-                const esAdmin   = u.roles?.some((r: any) => r.rol?.esAdmin);
-                return (
-                  <div key={u.id} className="flex items-center gap-3 px-5 py-3.5">
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-400 to-secondary-500 flex items-center justify-center text-white font-semibold text-xs flex-shrink-0">
-                      {u.nombre[0]}{u.apellido[0]}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                          {u.nombre} {u.apellido}
-                        </p>
-                        {!u.activo && (
-                          <UserX className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
+          <div className="flex-1 overflow-y-auto">
+            {isLoading ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
+              </div>
+            ) : usuarios.length === 0 ? (
+              <div className="text-center py-12 px-4">
+                <Users className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                <p className="text-sm text-gray-400">Sin usuarios registrados</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                {usuarios.map((u: any) => {
+                  const rolNombre = u.roles?.[0]?.rol?.nombre ?? '—';
+                  const esAdmin   = u.roles?.some((r: any) => r.rol?.esAdmin);
+                  return (
+                    <div key={u.id} className="flex items-center gap-3 px-5 py-3.5">
+                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-400 to-secondary-500 flex items-center justify-center text-white font-semibold text-xs flex-shrink-0">
+                        {u.nombre[0]}{u.apellido[0]}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                            {u.nombre} {u.apellido}
+                          </p>
+                          {!u.activo && <UserX className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />}
+                        </div>
+                        <p className="text-xs text-gray-400 truncate">{u.email}</p>
+                      </div>
+                      <div className="flex-shrink-0">
+                        {esAdmin ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-medium">
+                            <ShieldCheck className="w-3 h-3" /> Admin
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-medium">
+                            <UserCheck className="w-3 h-3" /> {rolNombre}
+                          </span>
                         )}
                       </div>
-                      <p className="text-xs text-gray-400 truncate">{u.email}</p>
                     </div>
-                    <div className="flex-shrink-0">
-                      {esAdmin ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-medium">
-                          <ShieldCheck className="w-3 h-3" /> Admin
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-medium">
-                          <UserCheck className="w-3 h-3" /> {rolNombre}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
-        <div className="p-4 border-t border-gray-100 dark:border-gray-800 flex-shrink-0">
-          <p className="text-xs text-center text-gray-400">
-            {usuarios.length} usuario{usuarios.length !== 1 ? 's' : ''} · Para crear o editar, el admin de esta clínica debe ingresar con su cuenta
-          </p>
+          <div className="p-4 border-t border-gray-100 dark:border-gray-800 flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => setModalNuevo(true)}
+              className="btn-primary w-full justify-center"
+            >
+              <Plus className="w-4 h-4" /> Agregar usuario
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+
+      {modalNuevo && (
+        <ModalNuevoUsuario
+          vetId={vetId}
+          onClose={() => setModalNuevo(false)}
+          onSuccess={handleNuevoExito}
+        />
+      )}
+    </>
   );
 }
 

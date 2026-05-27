@@ -102,7 +102,7 @@ export const usuariosApi = {
   crear: (data: any) => api.post('/usuarios', data).then(r => r.data),
   actualizar: (id: string, data: any) => api.put(`/usuarios/${id}`, data).then(r => r.data),
   cambiarEstado: (id: string, activo: boolean) => api.patch(`/usuarios/${id}/estado`, { activo }).then(r => r.data),
-  listarRoles: () => api.get('/usuarios/roles/list').then(r => r.data),
+  listarRoles: (veterinariaId?: string) => api.get('/usuarios/roles/list', { params: veterinariaId ? { veterinariaId } : {} }).then(r => r.data),
   crearRol: (data: any) => api.post('/usuarios/roles', data).then(r => r.data),
   actualizarRol: (id: string, data: any) => api.put(`/usuarios/roles/${id}`, data).then(r => r.data),
   listarPermisos: () => api.get('/usuarios/permisos/list').then(r => r.data),

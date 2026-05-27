@@ -49,21 +49,23 @@ export const obtener = async (req: AuthRequest, res: Response) => {
 };
 
 export const crear = async (req: AuthRequest, res: Response) => {
-  const { nombre, apellido, email, password, rolId, telefono } = req.body;
+  const { nombre, apellido, email, password, rolId, telefono, veterinariaId: targetVetId } = req.body;
   const tenant = filtroTenant(req);
+  // Super-admin puede crear usuarios en cualquier veterinaria
+  const veterinariaId = (req.usuario?.esSuperAdmin && targetVetId) ? targetVetId : tenant.veterinariaId;
   try {
     const existe = await prisma.usuario.findUnique({ where: { email } });
     if (existe) return res.status(400).json({ error: 'El email ya está registrado' });
 
     if (rolId) {
-      const rol = await prisma.rol.findFirst({ where: { id: rolId, veterinariaId: tenant.veterinariaId } });
+      const rol = await prisma.rol.findFirst({ where: { id: rolId, veterinariaId } });
       if (!rol) return res.status(400).json({ error: 'Rol inválido' });
     }
 
     const hash = await bcrypt.hash(password || 'Veterinaria123', 10);
     const usuario = await prisma.usuario.create({
       data: {
-        veterinariaId: tenant.veterinariaId,
+        veterinariaId,
         nombre, apellido, email,
         password: hash,
         telefono: telefono || null,
@@ -127,8 +129,13 @@ export const cambiarEstado = async (req: AuthRequest, res: Response) => {
 
 export const listarRoles = async (req: AuthRequest, res: Response) => {
   const tenant = filtroTenant(req);
+  // Super-admin puede consultar roles de cualquier veterinaria via ?veterinariaId=
+  const veterinariaId = (req.usuario?.esSuperAdmin && req.query.veterinariaId)
+    ? String(req.query.veterinariaId)
+    : tenant.veterinariaId;
+
   const roles = await prisma.rol.findMany({
-    where: { veterinariaId: tenant.veterinariaId, activo: true },
+    where: { veterinariaId, activo: true },
     include: {
       permisos: { include: { permiso: true } },
       _count: { select: { usuarios: true } },
