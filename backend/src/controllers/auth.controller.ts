@@ -7,14 +7,11 @@ import { AuthRequest } from '../middleware/auth.middleware';
 export const login = async (req: Request, res: Response) => {
   const { email, password } = req.body;
   try {
-    const totalUsuarios = await prisma.usuario.count();
     const usuario = await prisma.usuario.findUnique({ where: { email } });
-    console.log('[AUTH] total users in DB:', totalUsuarios, '| email:', email, 'found:', !!usuario);
     if (!usuario || !usuario.activo) {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
     const valido = await bcrypt.compare(password, usuario.password);
-    console.log('[AUTH] password valid:', valido);
     if (!valido) return res.status(401).json({ error: 'Credenciales inválidas' });
 
     const token = jwt.sign(
