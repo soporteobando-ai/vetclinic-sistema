@@ -19,6 +19,7 @@ import { dashboardRoutes } from './routes/dashboard.routes';
 import { internacionRoutes } from './routes/internaciones.routes';
 import { guarderiaRoutes } from './routes/guarderia.routes';
 import { usuarioRoutes } from './routes/usuarios.routes';
+import { veterinariaRoutes } from './routes/veterinarias.routes';
 import { errorHandler } from './middleware/errorHandler';
 import { setupSocketHandlers } from './services/socket.service';
 
@@ -57,6 +58,7 @@ app.use('/api/guarderia', guarderiaRoutes);
 app.use('/api/inventario', inventarioRoutes);
 app.use('/api/facturas', facturaRoutes);
 app.use('/api/usuarios', usuarioRoutes);
+app.use('/api/veterinarias', veterinariaRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date() }));

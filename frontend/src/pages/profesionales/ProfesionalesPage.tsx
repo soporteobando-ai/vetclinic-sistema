@@ -24,7 +24,7 @@ interface Permiso {
   id: string;
   codigo: string;
   modulo: string;
-  descripcion: string;
+  nombre: string;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -333,7 +333,7 @@ function ModalRol({ inicial, permisos, onClose, onSuccess }: ModalRolProps) {
                                 {seleccionados.has(p.codigo) && <Check className="w-2.5 h-2.5 text-white" />}
                               </div>
                               <div onClick={() => togglePermiso(p.codigo)} className="flex-1">
-                                <p className="text-xs font-medium text-gray-700 dark:text-gray-300">{p.descripcion}</p>
+                                <p className="text-xs font-medium text-gray-700 dark:text-gray-300">{p.nombre}</p>
                                 <p className="text-xs text-gray-400 font-mono">{p.codigo}</p>
                               </div>
                             </label>

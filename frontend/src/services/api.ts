@@ -108,6 +108,14 @@ export const usuariosApi = {
   listarPermisos: () => api.get('/usuarios/permisos/list').then(r => r.data),
 };
 
+export const veterinariasApi = {
+  listar: () => api.get('/veterinarias').then(r => r.data),
+  obtener: (id: string) => api.get(`/veterinarias/${id}`).then(r => r.data),
+  crear: (data: any) => api.post('/veterinarias', data).then(r => r.data),
+  actualizar: (id: string, data: any) => api.put(`/veterinarias/${id}`, data).then(r => r.data),
+  toggleActivo: (id: string, activo: boolean) => api.patch(`/veterinarias/${id}/estado`, { activo }).then(r => r.data),
+};
+
 export const esteticaApi = {
   listar: (params?: any) => api.get('/estetica', { params }).then(r => r.data),
   crear: (data: any) => api.post('/estetica', data).then(r => r.data),

@@ -7,6 +7,7 @@ export interface UsuarioAuth {
   veterinariaId: string;
   email: string;
   esAdmin: boolean;
+  esSuperAdmin: boolean;
   permisos: Set<string>;
 }
 
@@ -37,6 +38,7 @@ export const autenticar = async (req: AuthRequest, res: Response, next: NextFunc
         veterinariaId: true,
         email: true,
         activo: true,
+        esSuperAdmin: true,
         roles: {
           select: {
             rol: {
@@ -67,6 +69,7 @@ export const autenticar = async (req: AuthRequest, res: Response, next: NextFunc
       veterinariaId: usuario.veterinariaId,
       email: usuario.email,
       esAdmin,
+      esSuperAdmin: usuario.esSuperAdmin,
       permisos,
     };
 
@@ -89,6 +92,12 @@ export const verificarPermiso = (...codigos: string[]) => {
 export const soloAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {
   if (!req.usuario) return res.status(401).json({ error: 'No autenticado' });
   if (!req.usuario.esAdmin) return res.status(403).json({ error: 'Solo administradores' });
+  next();
+};
+
+export const soloSuperAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {
+  if (!req.usuario) return res.status(401).json({ error: 'No autenticado' });
+  if (!req.usuario.esSuperAdmin) return res.status(403).json({ error: 'Acceso restringido a super-administradores' });
   next();
 };
 

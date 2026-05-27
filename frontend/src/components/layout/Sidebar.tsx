@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Users, PawPrint, Calendar,
-  Scissors, Package, Receipt, BarChart3, Heart, UserCog, X,
+  Scissors, Package, Receipt, BarChart3, Heart, UserCog, X, Building2,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 
@@ -24,6 +24,7 @@ interface Props {
 
 export default function Sidebar({ open, onClose }: Props) {
   const { usuario, logout, tienePermiso } = useAuthStore();
+  const esSuperAdmin = usuario?.esSuperAdmin ?? false;
 
   return (
     <aside
@@ -59,6 +60,25 @@ export default function Sidebar({ open, onClose }: Props) {
 
       {/* Navegación */}
       <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+        {esSuperAdmin && (
+          <NavLink
+            to="/veterinarias"
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all mb-1
+              ${isActive
+                ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
+                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200'
+              }`
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <Building2 className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-primary-600 dark:text-primary-400' : ''}`} />
+                <span className="truncate">Veterinarias</span>
+              </>
+            )}
+          </NavLink>
+        )}
         {navItems
           .filter(item => tienePermiso(item.permiso))
           .map(({ to, icon: Icon, label }) => (

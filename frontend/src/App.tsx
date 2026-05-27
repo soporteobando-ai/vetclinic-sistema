@@ -15,6 +15,7 @@ import InventarioPage from './pages/inventario/InventarioPage';
 import FacturasPage from './pages/facturacion/FacturasPage';
 import ReportesPage from './pages/reportes/ReportesPage';
 import ProfesionalesPage from './pages/profesionales/ProfesionalesPage';
+import VeterinariasPage from './pages/veterinarias/VeterinariasPage';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { token } = useAuthStore();
@@ -53,6 +54,7 @@ export default function App() {
         <Route path="facturacion" element={<FacturasPage />} />
         <Route path="reportes" element={<ReportesPage />} />
         <Route path="profesionales" element={<ProfesionalesPage />} />
+        <Route path="veterinarias" element={<VeterinariasPage />} />
       </Route>
     </Routes>
   );

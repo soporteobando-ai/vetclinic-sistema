@@ -20,9 +20,27 @@ export interface Usuario {
   rol: string;
   veterinariaId: string;
   esAdmin: boolean;
+  esSuperAdmin: boolean;
   permisos: string[];
   telefono?: string;
   avatar?: string;
+}
+
+export interface Veterinaria {
+  id: string;
+  nombre: string;
+  direccion?: string;
+  telefono?: string;
+  email?: string;
+  logo?: string;
+  activo: boolean;
+  createdAt: string;
+  _count?: {
+    usuarios: number;
+    clientes: number;
+    mascotas: number;
+    turnos: number;
+  };
 }
 
 export interface Cliente {

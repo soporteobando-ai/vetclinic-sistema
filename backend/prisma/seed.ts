@@ -138,6 +138,7 @@ async function main() {
       nombre: 'Admin', apellido: 'Sistema',
       email: 'admin@vetclinic.com',
       password: await hash('admin123'),
+      esSuperAdmin: true,
       roles: { create: { rolId: rolAdmin.id } },
     },
   });

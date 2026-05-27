@@ -104,6 +104,8 @@ model Usuario {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  esSuperAdmin      Boolean            @default(false)
+
   veterinaria       Veterinaria        @relation(fields: [veterinariaId], references: [id])
   roles             UsuarioRol[]
   turnos            Turno[]            @relation("profesionalTurnos")

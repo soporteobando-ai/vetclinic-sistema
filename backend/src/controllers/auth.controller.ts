@@ -20,6 +20,7 @@ export const login = async (req: Request, res: Response) => {
           },
         },
       },
+      // esSuperAdmin is included via include all fields (default behavior)
     });
 
     if (!usuario || !usuario.activo) {
@@ -48,6 +49,7 @@ export const login = async (req: Request, res: Response) => {
         ...base,
         rol: nombreRol,
         esAdmin,
+        esSuperAdmin: usuario.esSuperAdmin,
         permisos,
       },
     });
@@ -80,7 +82,7 @@ export const perfil = async (req: AuthRequest, res: Response) => {
       where: { id: req.usuario!.id },
       select: {
         id: true, nombre: true, apellido: true, email: true,
-        veterinariaId: true, telefono: true, avatar: true,
+        veterinariaId: true, telefono: true, avatar: true, esSuperAdmin: true,
         roles: {
           include: {
             rol: {
@@ -97,7 +99,7 @@ export const perfil = async (req: AuthRequest, res: Response) => {
     const permisos = [...new Set(roles.flatMap(ur => ur.rol.permisos.map(rp => rp.permiso.codigo)))];
     const nombreRol = roles[0]?.rol.nombre ?? 'USUARIO';
 
-    res.json({ ...base, rol: nombreRol, esAdmin, permisos });
+    res.json({ ...base, rol: nombreRol, esAdmin, esSuperAdmin: base.esSuperAdmin, permisos });
   } catch {
     res.status(500).json({ error: 'Error al obtener perfil' });
   }
