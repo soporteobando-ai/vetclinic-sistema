@@ -24,6 +24,10 @@ import { setupSocketHandlers } from './services/socket.service';
 
 dotenv.config();
 
+const dbUrl = process.env.DATABASE_URL || 'NOT_SET';
+const dbHost = dbUrl.includes('@') ? dbUrl.split('@')[1].split('/')[0] : 'NO_AT_SIGN_IN_URL';
+console.log('[DB] Connecting to host:', dbHost);
+
 const app = express();
 const server = http.createServer(app);
 const io = new SocketServer(server, {
