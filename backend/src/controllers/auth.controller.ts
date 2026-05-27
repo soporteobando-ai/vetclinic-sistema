@@ -7,8 +7,9 @@ import { AuthRequest } from '../middleware/auth.middleware';
 export const login = async (req: Request, res: Response) => {
   const { email, password } = req.body;
   try {
+    const totalUsuarios = await prisma.usuario.count();
     const usuario = await prisma.usuario.findUnique({ where: { email } });
-    console.log('[AUTH]', email, 'found:', !!usuario, 'activo:', usuario?.activo, 'hashPrefix:', usuario?.password?.substring(0,7));
+    console.log('[AUTH] total users in DB:', totalUsuarios, '| email:', email, 'found:', !!usuario);
     if (!usuario || !usuario.activo) {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
