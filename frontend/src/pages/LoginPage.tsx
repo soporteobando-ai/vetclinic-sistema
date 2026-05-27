@@ -5,8 +5,8 @@ import { Heart, Eye, EyeOff, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('admin@vetclinic.com');
-  const [password, setPassword] = useState('admin123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [verPass, setVerPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const { login } = useAuthStore();
@@ -81,11 +81,6 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-xs text-blue-700 dark:text-blue-300">
-            <p className="font-medium mb-1">Credenciales de demo:</p>
-            <p>Email: admin@vetclinic.com</p>
-            <p>Contraseña: admin123</p>
-          </div>
         </div>
       </div>
     </div>
