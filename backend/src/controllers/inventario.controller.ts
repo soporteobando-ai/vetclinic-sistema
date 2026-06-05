@@ -27,9 +27,13 @@ export const listarProductos = async (req: AuthRequest, res: Response) => {
 export const crearProducto = async (req: AuthRequest, res: Response) => {
   const tenant = filtroTenant(req);
   try {
-    const producto = await prisma.producto.create({ data: { ...tenant, ...req.body } });
+    const { vencimiento, ...rest } = req.body;
+    const data: any = { ...tenant, ...rest };
+    if (vencimiento) data.vencimiento = new Date(vencimiento);
+    const producto = await prisma.producto.create({ data });
     res.status(201).json(producto);
-  } catch {
+  } catch (error: any) {
+    console.error('Error crearProducto:', error?.message);
     res.status(500).json({ error: 'Error al crear producto' });
   }
 };
@@ -40,9 +44,14 @@ export const actualizarProducto = async (req: AuthRequest, res: Response) => {
   try {
     const existing = await prisma.producto.findFirst({ where: { id, ...tenant } });
     if (!existing) return res.status(404).json({ error: 'Producto no encontrado' });
-    const producto = await prisma.producto.update({ where: { id }, data: req.body });
+    const { vencimiento, ...rest } = req.body;
+    const data: any = { ...rest };
+    if (vencimiento) data.vencimiento = new Date(vencimiento);
+    else if (vencimiento === '' || vencimiento === null) data.vencimiento = null;
+    const producto = await prisma.producto.update({ where: { id }, data });
     res.json(producto);
-  } catch {
+  } catch (error: any) {
+    console.error('Error actualizarProducto:', error?.message);
     res.status(500).json({ error: 'Error al actualizar producto' });
   }
 };

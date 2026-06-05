@@ -2,6 +2,7 @@ import { useForm } from 'react-hook-form';
 import { inventarioApi } from '../../../services/api';
 import { X, Loader2 } from 'lucide-react';
 import { useState } from 'react';
+import toast from 'react-hot-toast';
 
 export default function ModalProducto({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const [loading, setLoading] = useState(false);
@@ -9,8 +10,15 @@ export default function ModalProducto({ onClose, onSuccess }: { onClose: () => v
 
   const onSubmit = async (data: any) => {
     setLoading(true);
-    try { await inventarioApi.crear(data); onSuccess(); }
-    finally { setLoading(false); }
+    try {
+      await inventarioApi.crear(data);
+      toast.success('Producto creado');
+      onSuccess();
+    } catch (e: any) {
+      toast.error(e.response?.data?.error || 'Error al crear producto');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
