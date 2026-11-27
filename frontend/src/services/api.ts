@@ -16,7 +16,8 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (error) => {
-    if (error.response?.status === 401) {
+    // En el login, un 401 son credenciales rechazadas: no recargar, para que se vea el error
+    if (error.response?.status === 401 && error.config?.url !== '/auth/login') {
       localStorage.removeItem('token');
       localStorage.removeItem('usuario');
       window.location.href = '/login';
