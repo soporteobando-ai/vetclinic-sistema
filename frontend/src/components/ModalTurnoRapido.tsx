@@ -523,7 +523,7 @@ export default function ModalTurnoRapido({ onClose, onSuccess, clienteInicial, f
                 {conflictos.map((t: any) => (
                   <div key={t.id} className="flex items-center gap-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl">
                     <div className="text-xl">{
-                      { PERRO: '🐕', GATO: '🐈', AVE: '🦜', CONEJO: '🐇', HAMSTER: '🐹', REPTIL: '🦎' }[t.mascota?.especie] ?? '🐾'
+                      ({ PERRO: '🐕', GATO: '🐈', AVE: '🦜', CONEJO: '🐇', HAMSTER: '🐹', REPTIL: '🦎' } as Record<string, string>)[t.mascota?.especie] ?? '🐾'
                     }</div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-900 dark:text-white">

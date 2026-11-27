@@ -4,12 +4,12 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 import { io } from 'socket.io-client';
 import toast from 'react-hot-toast';
-
-const socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001');
+import { useAuthStore } from '../../store/authStore';
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const token = useAuthStore(s => s.token);
 
   // Cerrar sidebar al navegar en mobile
   useEffect(() => {
@@ -17,6 +17,9 @@ export default function Layout() {
   }, [location.pathname]);
 
   useEffect(() => {
+    if (!token) return;
+    // El servidor asigna la sala de la veterinaria a partir del token
+    const socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001', { auth: { token } });
     socket.on('turno:nuevo', (turno) => {
       toast.success(`Nuevo turno: ${turno.mascota?.nombre} — ${turno.cliente?.nombre}`);
     });
@@ -28,8 +31,8 @@ export default function Layout() {
         style: { background: '#fef3c7', color: '#92400e' },
       });
     });
-    return () => { socket.off(); };
-  }, []);
+    return () => { socket.off(); socket.disconnect(); };
+  }, [token]);
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-950 overflow-hidden">

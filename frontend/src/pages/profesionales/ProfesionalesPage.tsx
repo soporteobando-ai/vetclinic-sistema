@@ -62,7 +62,7 @@ interface ModalUsuarioProps {
 
 function ModalUsuario({ inicial, roles, onClose, onSuccess }: ModalUsuarioProps) {
   const [loading, setLoading] = useState(false);
-  const { register, handleSubmit, formState: { errors } } = useForm({
+  const { register, handleSubmit, formState: { errors } } = useForm<Record<string, any>>({
     defaultValues: inicial
       ? {
           nombre: inicial.nombre,

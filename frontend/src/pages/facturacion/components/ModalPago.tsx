@@ -6,7 +6,7 @@ import { Factura } from '../../../types';
 
 export default function ModalPago({ factura, onClose, onSuccess }: { factura: Factura; onClose: () => void; onSuccess: () => void }) {
   const [loading, setLoading] = useState(false);
-  const { register, handleSubmit } = useForm({ defaultValues: { monto: factura.total, medioPago: 'EFECTIVO' } });
+  const { register, handleSubmit } = useForm<Record<string, any>>({ defaultValues: { monto: factura.total, medioPago: 'EFECTIVO' } });
 
   const onSubmit = async (data: any) => {
     setLoading(true);

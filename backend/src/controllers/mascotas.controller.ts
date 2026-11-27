@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import prisma from '../config/prisma';
 import { AuthRequest, filtroTenant } from '../middleware/auth.middleware';
+import { referenciaInvalida } from '../utils/tenant';
 
 export const listar = async (req: AuthRequest, res: Response) => {
   const { buscar, clienteId, especie } = req.query;
@@ -73,8 +74,10 @@ export const crear = async (req: AuthRequest, res: Response) => {
   const tenant = filtroTenant(req);
   try {
     const data = sanitizarMascota(req.body);
+    const campo = await referenciaInvalida(tenant.veterinariaId, data);
+    if (campo) return res.status(400).json({ error: `Referencia inválida: ${campo}` });
     const mascota = await prisma.mascota.create({
-      data: { ...tenant, ...data },
+      data: { ...data, ...tenant },
       include: { cliente: { select: { nombre: true, apellido: true } } },
     });
     res.status(201).json(mascota);
@@ -92,6 +95,8 @@ export const actualizar = async (req: AuthRequest, res: Response) => {
     if (!existing) return res.status(404).json({ error: 'Mascota no encontrada' });
 
     const data = sanitizarMascota(req.body);
+    const campo = await referenciaInvalida(tenant.veterinariaId, data);
+    if (campo) return res.status(400).json({ error: `Referencia inválida: ${campo}` });
     const mascota = await prisma.mascota.update({ where: { id }, data });
     res.json(mascota);
   } catch (error: any) {

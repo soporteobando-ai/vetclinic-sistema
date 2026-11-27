@@ -10,14 +10,17 @@ async function main() {
   // Skip if already seeded
   const existing = await prisma.veterinaria.findFirst();
   if (existing) {
-    console.log('✅ Base de datos ya tiene datos. Ejecutando upsert de password admin...');
-    await prisma.usuario.updateMany({
-      where: { email: 'admin@vetclinic.com' },
-      data: { password: await hash('admin123') },
-    });
-    console.log('✅ Password admin actualizado. Seed omitido.');
+    console.log('✅ Base de datos ya tiene datos. Seed omitido.');
     return;
   }
+
+  // En producción los usuarios iniciales no pueden usar las contraseñas públicas de demo
+  const esProduccion = process.env.NODE_ENV === 'production';
+  const passwordInicial = process.env.SEED_ADMIN_PASSWORD;
+  if (esProduccion && (!passwordInicial || passwordInicial.length < 12)) {
+    throw new Error('SEED_ADMIN_PASSWORD (mínimo 12 caracteres) es obligatoria para el seed en producción');
+  }
+  const claveDemo = (porDefecto: string) => (esProduccion ? passwordInicial! : porDefecto);
 
   // ─── Veterinaria ─────────────────────────────
   const vet = await prisma.veterinaria.create({
@@ -137,7 +140,7 @@ async function main() {
       veterinariaId: vet.id,
       nombre: 'Admin', apellido: 'Sistema',
       email: 'admin@vetclinic.com',
-      password: await hash('admin123'),
+      password: await hash(claveDemo('admin123')),
       esSuperAdmin: true,
       roles: { create: { rolId: rolAdmin.id } },
     },
@@ -148,7 +151,7 @@ async function main() {
       veterinariaId: vet.id,
       nombre: 'Valentina', apellido: 'García',
       email: 'dra.garcia@vetclinic.com',
-      password: await hash('vet123'),
+      password: await hash(claveDemo('vet123')),
       telefono: '11-2222-3333',
       roles: { create: { rolId: rolVet.id } },
     },
@@ -159,7 +162,7 @@ async function main() {
       veterinariaId: vet.id,
       nombre: 'Lucas', apellido: 'Romero',
       email: 'lucas@vetclinic.com',
-      password: await hash('groomer123'),
+      password: await hash(claveDemo('groomer123')),
       telefono: '11-4444-5555',
       roles: { create: { rolId: rolEstilista.id } },
     },
@@ -170,7 +173,7 @@ async function main() {
       veterinariaId: vet.id,
       nombre: 'Sofía', apellido: 'Martínez',
       email: 'sofia@vetclinic.com',
-      password: await hash('recep123'),
+      password: await hash(claveDemo('recep123')),
       roles: { create: { rolId: rolRecep.id } },
     },
   });
@@ -484,6 +487,7 @@ async function main() {
   console.log('✅ Facturas creadas');
 
   console.log('\n🎉 Seed completado exitosamente!');
+  if (esProduccion) return;
   console.log('\n📋 Credenciales de acceso:');
   console.log('   Admin:        admin@vetclinic.com      / admin123');
   console.log('   Veterinario:  dra.garcia@vetclinic.com / vet123');
@@ -492,5 +496,5 @@ async function main() {
 }
 
 main()
-  .catch(console.error)
+  .catch(e => { console.error(e); process.exitCode = 1; })
   .finally(() => prisma.$disconnect());

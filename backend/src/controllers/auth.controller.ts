@@ -10,6 +10,7 @@ export const login = async (req: Request, res: Response) => {
     const usuario = await prisma.usuario.findUnique({
       where: { email },
       include: {
+        veterinaria: { select: { activo: true } },
         roles: {
           include: {
             rol: {
@@ -20,7 +21,6 @@ export const login = async (req: Request, res: Response) => {
           },
         },
       },
-      // esSuperAdmin is included via include all fields (default behavior)
     });
 
     if (!usuario || !usuario.activo) {
@@ -28,6 +28,9 @@ export const login = async (req: Request, res: Response) => {
     }
     const valido = await bcrypt.compare(password, usuario.password);
     if (!valido) return res.status(401).json({ error: 'Credenciales inválidas' });
+    if (!usuario.veterinaria.activo && !usuario.esSuperAdmin) {
+      return res.status(401).json({ error: 'La veterinaria está desactivada' });
+    }
 
     const token = jwt.sign(
       { id: usuario.id, veterinariaId: usuario.veterinariaId, email: usuario.email },
@@ -42,7 +45,7 @@ export const login = async (req: Request, res: Response) => {
 
     const nombreRol = usuario.roles[0]?.rol.nombre ?? 'USUARIO';
 
-    const { password: _, roles: __, ...base } = usuario;
+    const { password: _, roles: __, veterinaria: ___, ...base } = usuario;
     res.json({
       token,
       usuario: {
@@ -58,8 +61,10 @@ export const login = async (req: Request, res: Response) => {
   }
 };
 
-export const registro = async (req: Request, res: Response) => {
-  const { nombre, apellido, email, password, telefono, veterinariaId } = req.body;
+export const registro = async (req: AuthRequest, res: Response) => {
+  const { nombre, apellido, email, password, telefono, veterinariaId: destino } = req.body;
+  // Solo un super-admin puede crear usuarios en otra veterinaria
+  const veterinariaId = (req.usuario!.esSuperAdmin && destino) ? destino : req.usuario!.veterinariaId;
   try {
     const existe = await prisma.usuario.findUnique({ where: { email } });
     if (existe) return res.status(400).json({ error: 'El email ya está registrado' });

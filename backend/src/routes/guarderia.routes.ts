@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { autenticar, verificarPermiso, filtroTenant, AuthRequest } from '../middleware/auth.middleware';
 import prisma from '../config/prisma';
+import { referenciaInvalida, tomarCampos } from '../utils/tenant';
 
 export const guarderiaRoutes = Router();
 
@@ -22,8 +23,16 @@ guarderiaRoutes.get('/', verificarPermiso('agenda:read'), async (req: AuthReques
 guarderiaRoutes.post('/', verificarPermiso('agenda:write'), async (req: AuthRequest, res) => {
   const tenant = filtroTenant(req);
   try {
+    const data: any = {
+      ...tomarCampos(req.body, [
+        'turnoId', 'mascotaId', 'boxId', 'fechaIngreso', 'fechaEgreso', 'planAlimenticio', 'autorizacionFirmada',
+      ]),
+      ...tenant,
+    };
+    const campo = await referenciaInvalida(tenant.veterinariaId, data);
+    if (campo) return res.status(400).json({ error: `Referencia inválida: ${campo}` });
     const guarderia = await prisma.guarderia.create({
-      data: { ...req.body, ...tenant },
+      data,
       include: { turno: true, box: true },
     });
     res.status(201).json(guarderia);
@@ -44,7 +53,7 @@ guarderiaRoutes.post('/:id/novedad', verificarPermiso('agenda:write'), async (re
   if (!existing) return res.status(404).json({ error: 'Guardería no encontrada' });
 
   const novedad = await prisma.novedadGuarderia.create({
-    data: { ...req.body, guarderiaId: req.params.id },
+    data: { ...tomarCampos(req.body, ['fecha', 'descripcion', 'fotos']), guarderiaId: req.params.id } as any,
   });
   res.status(201).json(novedad);
 });

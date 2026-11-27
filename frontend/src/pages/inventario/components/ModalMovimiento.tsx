@@ -6,7 +6,7 @@ import { Producto } from '../../../types';
 
 export default function ModalMovimiento({ producto, onClose, onSuccess }: { producto: Producto; onClose: () => void; onSuccess: () => void }) {
   const [loading, setLoading] = useState(false);
-  const { register, handleSubmit } = useForm({ defaultValues: { tipo: 'ENTRADA', cantidad: 1 } });
+  const { register, handleSubmit } = useForm<Record<string, any>>({ defaultValues: { tipo: 'ENTRADA', cantidad: 1 } });
 
   const onSubmit = async (data: any) => {
     setLoading(true);

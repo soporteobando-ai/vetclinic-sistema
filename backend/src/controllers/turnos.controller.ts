@@ -1,5 +1,7 @@
 import { Response } from 'express';
 import prisma from '../config/prisma';
+import { referenciaInvalida, tomarCampos } from '../utils/tenant';
+import { emitirAVeterinaria } from '../services/socket.service';
 import { AuthRequest, filtroTenant } from '../middleware/auth.middleware';
 import { startOfDay, endOfDay } from '../utils/fechas';
 
@@ -39,7 +41,7 @@ export const obtener = async (req: AuthRequest, res: Response) => {
     include: {
       mascota: true,
       cliente: true,
-      profesional: true,
+      profesional: { select: profesionalSelect },
       consulta: { include: { recetas: true, estudios: true } },
       servicioEstetica: true,
       guarderia: { include: { novedadesDiarias: true } },
@@ -48,6 +50,11 @@ export const obtener = async (req: AuthRequest, res: Response) => {
   if (!turno) return res.status(404).json({ error: 'Turno no encontrado' });
   res.json(turno);
 };
+
+const CAMPOS_TURNO = [
+  'mascotaId', 'clienteId', 'profesionalId', 'tipo', 'estado',
+  'fechaHora', 'duracionMin', 'motivo', 'notas',
+] as const;
 
 const parsearFechaHora = (valor: any): Date => new Date(String(valor));
 
@@ -60,7 +67,9 @@ const TIPOS_ESTETICA = new Set([
 export const crear = async (req: AuthRequest, res: Response) => {
   const tenant = filtroTenant(req);
   try {
-    const data = { ...req.body, ...tenant };
+    const data: any = { ...tomarCampos(req.body, CAMPOS_TURNO), ...tenant };
+    const campo = await referenciaInvalida(tenant.veterinariaId, data);
+    if (campo) return res.status(400).json({ error: `Referencia inválida: ${campo}` });
     if (data.fechaHora) data.fechaHora = parsearFechaHora(data.fechaHora);
 
     const include = {
@@ -89,7 +98,7 @@ export const crear = async (req: AuthRequest, res: Response) => {
     }
 
     const io = (req as any).io;
-    if (io) io.emit('turno:nuevo', turno);
+    if (io) emitirAVeterinaria(io, tenant.veterinariaId, 'turno:nuevo', turno);
 
     res.status(201).json(turno);
   } catch (e: any) {
@@ -116,7 +125,7 @@ export const actualizarEstado = async (req: AuthRequest, res: Response) => {
     });
 
     const io = (req as any).io;
-    if (io) io.emit('turno:actualizado', turno);
+    if (io) emitirAVeterinaria(io, tenant.veterinariaId, 'turno:actualizado', turno);
 
     res.json(turno);
   } catch {
@@ -131,7 +140,9 @@ export const actualizar = async (req: AuthRequest, res: Response) => {
     const existing = await prisma.turno.findFirst({ where: { id, ...tenant } });
     if (!existing) return res.status(404).json({ error: 'Turno no encontrado' });
 
-    const data = { ...req.body };
+    const data = tomarCampos(req.body, CAMPOS_TURNO);
+    const campo = await referenciaInvalida(tenant.veterinariaId, data);
+    if (campo) return res.status(400).json({ error: `Referencia inválida: ${campo}` });
     if (data.fechaHora) data.fechaHora = parsearFechaHora(data.fechaHora);
     const turno = await prisma.turno.update({ where: { id }, data });
     res.json(turno);

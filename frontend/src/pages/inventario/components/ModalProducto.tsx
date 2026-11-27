@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 
 export default function ModalProducto({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const [loading, setLoading] = useState(false);
-  const { register, handleSubmit } = useForm({ defaultValues: { stockMinimo: 5, stockActual: 0, precio: 0, unidad: 'unidad' } });
+  const { register, handleSubmit } = useForm<Record<string, any>>({ defaultValues: { stockMinimo: 5, stockActual: 0, precio: 0, unidad: 'unidad' } });
 
   const onSubmit = async (data: any) => {
     setLoading(true);

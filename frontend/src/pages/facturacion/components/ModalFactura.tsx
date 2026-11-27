@@ -8,7 +8,12 @@ export default function ModalFactura({ onClose, onSuccess }: { onClose: () => vo
   const [loading, setLoading] = useState(false);
   const [buscarCliente, setBuscarCliente] = useState('');
   const [clienteId, setClienteId] = useState('');
-  const { register, handleSubmit, control, watch } = useForm({
+  const { register, handleSubmit, control, watch } = useForm<{
+    detalles: { descripcion: string; cantidad: number; precioUnit: number; subtotal: number }[];
+    descuento: number;
+    medioPago?: string;
+    notas?: string;
+  }>({
     defaultValues: { detalles: [{ descripcion: '', cantidad: 1, precioUnit: 0, subtotal: 0 }], descuento: 0 },
   });
   const { fields, append, remove } = useFieldArray({ control, name: 'detalles' });

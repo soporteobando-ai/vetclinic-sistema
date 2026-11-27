@@ -513,7 +513,7 @@ const TIPO_ESTUDIO_LABEL: Record<string, string> = {
 // Sub-componente Estudio
 function EstudioForm({ consultaId, turno, veterinario }: { consultaId: string | null; turno: any; veterinario: any }) {
   const qc = useQueryClient();
-  const { register, handleSubmit, reset } = useForm({ defaultValues: { tipo: 'LABORATORIO' } });
+  const { register, handleSubmit, reset } = useForm<Record<string, any>>({ defaultValues: { tipo: 'LABORATORIO' } });
   const [loading, setLoading] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
 

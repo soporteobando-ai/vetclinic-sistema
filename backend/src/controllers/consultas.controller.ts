@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import prisma from '../config/prisma';
 import { AuthRequest, filtroTenant } from '../middleware/auth.middleware';
+import { referenciaInvalida } from '../utils/tenant';
 
 const parsearFecha = (valor: any): Date | null => {
   if (!valor || valor === '') return null;
@@ -32,8 +33,11 @@ const sanitizarConsulta = (body: any) => {
 export const crear = async (req: AuthRequest, res: Response) => {
   const tenant = filtroTenant(req);
   try {
+    const data = sanitizarConsulta(req.body);
+    const campo = await referenciaInvalida(tenant.veterinariaId, data);
+    if (campo) return res.status(400).json({ error: `Referencia inválida: ${campo}` });
     const consulta = await prisma.consulta.create({
-      data: { ...tenant, ...sanitizarConsulta(req.body) },
+      data: { ...data, ...tenant },
       include: {
         mascota: true,
         veterinario: { select: { nombre: true, apellido: true } },
@@ -75,7 +79,10 @@ export const actualizar = async (req: AuthRequest, res: Response) => {
   try {
     const existing = await prisma.consulta.findFirst({ where: { id, ...tenant } });
     if (!existing) return res.status(404).json({ error: 'Consulta no encontrada' });
-    const consulta = await prisma.consulta.update({ where: { id }, data: sanitizarConsulta(req.body) });
+    const data = sanitizarConsulta(req.body);
+    const campo = await referenciaInvalida(tenant.veterinariaId, data);
+    if (campo) return res.status(400).json({ error: `Referencia inválida: ${campo}` });
+    const consulta = await prisma.consulta.update({ where: { id }, data });
     res.json(consulta);
   } catch {
     res.status(500).json({ error: 'Error al actualizar consulta' });
@@ -86,6 +93,8 @@ export const agregarReceta = async (req: AuthRequest, res: Response) => {
   const { consultaId } = req.params;
   try {
     const { medicamento, principioActivo, dosis, frecuencia, duracion, cantidad, indicaciones } = req.body;
+    const consulta = await prisma.consulta.findFirst({ where: { id: consultaId, ...filtroTenant(req) } });
+    if (!consulta) return res.status(404).json({ error: 'Consulta no encontrada' });
     const receta = await prisma.receta.create({
       data: { consultaId, medicamento, principioActivo: principioActivo || null, dosis, frecuencia, duracion, cantidad: cantidad || null, indicaciones: indicaciones || null },
     });
@@ -99,6 +108,8 @@ export const editarReceta = async (req: AuthRequest, res: Response) => {
   const { recetaId } = req.params;
   try {
     const { medicamento, principioActivo, dosis, frecuencia, duracion, cantidad, indicaciones } = req.body;
+    const existing = await prisma.receta.findFirst({ where: { id: recetaId, consulta: filtroTenant(req) } });
+    if (!existing) return res.status(404).json({ error: 'Receta no encontrada' });
     const receta = await prisma.receta.update({
       where: { id: recetaId },
       data: { medicamento, principioActivo: principioActivo || null, dosis, frecuencia, duracion, cantidad: cantidad || null, indicaciones: indicaciones || null },
@@ -112,6 +123,8 @@ export const editarReceta = async (req: AuthRequest, res: Response) => {
 export const eliminarReceta = async (req: AuthRequest, res: Response) => {
   const { recetaId } = req.params;
   try {
+    const existing = await prisma.receta.findFirst({ where: { id: recetaId, consulta: filtroTenant(req) } });
+    if (!existing) return res.status(404).json({ error: 'Receta no encontrada' });
     await prisma.receta.delete({ where: { id: recetaId } });
     res.json({ mensaje: 'Receta eliminada' });
   } catch {
@@ -123,6 +136,8 @@ export const agregarEstudio = async (req: AuthRequest, res: Response) => {
   const { consultaId } = req.params;
   try {
     const { tipo, descripcion, laboratorio, resultado } = req.body;
+    const consulta = await prisma.consulta.findFirst({ where: { id: consultaId, ...filtroTenant(req) } });
+    if (!consulta) return res.status(404).json({ error: 'Consulta no encontrada' });
     const estudio = await prisma.estudio.create({
       data: { consultaId, tipo, descripcion, laboratorio: laboratorio || null, resultado: resultado || null },
     });
@@ -136,6 +151,8 @@ export const editarEstudio = async (req: AuthRequest, res: Response) => {
   const { estudioId } = req.params;
   try {
     const { tipo, descripcion, laboratorio, resultado } = req.body;
+    const existing = await prisma.estudio.findFirst({ where: { id: estudioId, consulta: filtroTenant(req) } });
+    if (!existing) return res.status(404).json({ error: 'Estudio no encontrado' });
     const estudio = await prisma.estudio.update({
       where: { id: estudioId },
       data: { tipo, descripcion, laboratorio: laboratorio || null, resultado: resultado || null },
@@ -149,6 +166,8 @@ export const editarEstudio = async (req: AuthRequest, res: Response) => {
 export const eliminarEstudio = async (req: AuthRequest, res: Response) => {
   const { estudioId } = req.params;
   try {
+    const existing = await prisma.estudio.findFirst({ where: { id: estudioId, consulta: filtroTenant(req) } });
+    if (!existing) return res.status(404).json({ error: 'Estudio no encontrado' });
     await prisma.estudio.delete({ where: { id: estudioId } });
     res.json({ mensaje: 'Estudio eliminado' });
   } catch {
@@ -159,6 +178,9 @@ export const eliminarEstudio = async (req: AuthRequest, res: Response) => {
 export const registrarVacuna = async (req: AuthRequest, res: Response) => {
   try {
     const { mascotaId, veterinarioId, nombre, laboratorio, lote, notas, fechaAplicacion, proximaDosis } = req.body;
+    const tenant = filtroTenant(req);
+    const campo = await referenciaInvalida(tenant.veterinariaId, { mascotaId, veterinarioId: veterinarioId || null });
+    if (campo) return res.status(400).json({ error: `Referencia inválida: ${campo}` });
     const vacuna = await prisma.vacuna.create({
       data: {
         mascotaId, veterinarioId: veterinarioId || null,
@@ -178,6 +200,9 @@ export const registrarVacuna = async (req: AuthRequest, res: Response) => {
 export const registrarDesparasitacion = async (req: AuthRequest, res: Response) => {
   try {
     const { mascotaId, veterinarioId, producto, tipo, notas, fechaAplicacion, proximaDosis } = req.body;
+    const tenant = filtroTenant(req);
+    const campo = await referenciaInvalida(tenant.veterinariaId, { mascotaId, veterinarioId: veterinarioId || null });
+    if (campo) return res.status(400).json({ error: `Referencia inválida: ${campo}` });
     const d = await prisma.desparasitacion.create({
       data: {
         mascotaId, veterinarioId: veterinarioId || null,

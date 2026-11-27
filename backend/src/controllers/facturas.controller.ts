@@ -1,5 +1,6 @@
 import { Response } from 'express';
 import prisma from '../config/prisma';
+import { referenciaInvalida, tomarCampos } from '../utils/tenant';
 import { AuthRequest, filtroTenant } from '../middleware/auth.middleware';
 
 const generarNumero = async (veterinariaId: string): Promise<string> => {
@@ -55,15 +56,23 @@ export const crear = async (req: AuthRequest, res: Response) => {
   const { clienteId, detalles, descuento = 0, medioPago, notas, presupuestoId } = req.body;
   const tenant = filtroTenant(req);
   try {
+    const items = (Array.isArray(detalles) ? detalles : []).map((d: any) =>
+      tomarCampos(d, ['productoId', 'descripcion', 'cantidad', 'precioUnit', 'subtotal']));
+    const referencias = [{ clienteId, presupuestoId: presupuestoId || null }, ...items];
+    for (const referencia of referencias) {
+      const campo = await referenciaInvalida(tenant.veterinariaId, referencia);
+      if (campo) return res.status(400).json({ error: `Referencia inválida: ${campo}` });
+    }
+
     const numero = await generarNumero(tenant.veterinariaId);
-    const subtotal = detalles.reduce((acc: number, d: any) => acc + d.subtotal, 0);
+    const subtotal = items.reduce((acc: number, d: any) => acc + d.subtotal, 0);
     const total = subtotal - descuento;
 
     const factura = await prisma.factura.create({
       data: {
         ...tenant,
-        numero, clienteId, presupuestoId, subtotal, descuento, total, medioPago, notas,
-        detalles: { create: detalles },
+        numero, clienteId, presupuestoId: presupuestoId || null, subtotal, descuento, total, medioPago, notas,
+        detalles: { create: items },
       },
       include: { detalles: true, cliente: { select: { nombre: true, apellido: true } } },
     });

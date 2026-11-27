@@ -15,6 +15,8 @@ services:
         sync: false
       - key: JWT_EXPIRES_IN
         value: 7d
+      - key: SEED_ADMIN_PASSWORD
+        sync: false          # Solo se usa al poblar una base vacía (mínimo 12 caracteres)
       - key: FRONTEND_URL
         sync: false          # URL de Vercel: https://tu-app.vercel.app
       - key: CLOUDINARY_CLOUD_NAME

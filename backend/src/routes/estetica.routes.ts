@@ -1,6 +1,22 @@
 import { Router } from 'express';
 import { autenticar, verificarPermiso, filtroTenant, AuthRequest } from '../middleware/auth.middleware';
 import prisma from '../config/prisma';
+import { referenciaInvalida, tomarCampos } from '../utils/tenant';
+import { emitirAVeterinaria } from '../services/socket.service';
+
+const CAMPOS_SERVICIO = [
+  'turnoId', 'mascotaId', 'estilistId', 'servicios', 'estadoGrooming', 'condicionPelaje',
+  'reaccionesMascota', 'productosUsados', 'observaciones', 'fotosAntes', 'fotosDespues', 'duracionMin',
+] as const;
+
+// Las listas se guardan como JSON serializado
+const prepararServicio = (body: any) => {
+  const data = tomarCampos(body, CAMPOS_SERVICIO);
+  for (const campo of ['servicios', 'fotosAntes', 'fotosDespues']) {
+    if (Array.isArray(data[campo])) data[campo] = JSON.stringify(data[campo]);
+  }
+  return data;
+};
 
 export const esteticaRoutes = Router();
 
@@ -34,8 +50,9 @@ esteticaRoutes.get('/', verificarPermiso('estetica:read'), async (req: AuthReque
 esteticaRoutes.post('/', verificarPermiso('estetica:write'), async (req: AuthRequest, res) => {
   const tenant = filtroTenant(req);
   try {
-    const body = { ...req.body, ...tenant };
-    if (Array.isArray(body.servicios)) body.servicios = JSON.stringify(body.servicios);
+    const body = { ...prepararServicio(req.body), ...tenant };
+    const campo = await referenciaInvalida(tenant.veterinariaId, body);
+    if (campo) return res.status(400).json({ error: `Referencia inválida: ${campo}` });
     const servicio = await prisma.servicioEstetica.create({
       data: body,
       include: { mascota: true, turno: true },
@@ -50,7 +67,11 @@ esteticaRoutes.get('/:id', verificarPermiso('estetica:read'), async (req: AuthRe
   const tenant = filtroTenant(req);
   const servicio = await prisma.servicioEstetica.findFirst({
     where: { id: req.params.id, ...tenant },
-    include: { mascota: true, turno: { include: { cliente: true } }, estilista: true },
+    include: {
+      mascota: true,
+      turno: { include: { cliente: true } },
+      estilista: { select: { id: true, nombre: true, apellido: true } },
+    },
   });
   if (!servicio) return res.status(404).json({ error: 'Servicio no encontrado' });
   res.json(parsarServicios(servicio));
@@ -62,13 +83,14 @@ esteticaRoutes.put('/:id', verificarPermiso('estetica:write'), async (req: AuthR
     const existing = await prisma.servicioEstetica.findFirst({ where: { id: req.params.id, ...tenant } });
     if (!existing) return res.status(404).json({ error: 'Servicio no encontrado' });
 
-    const body = { ...req.body };
-    if (Array.isArray(body.servicios)) body.servicios = JSON.stringify(body.servicios);
+    const body = prepararServicio(req.body);
+    const campo = await referenciaInvalida(tenant.veterinariaId, body);
+    if (campo) return res.status(400).json({ error: `Referencia inválida: ${campo}` });
     const servicio = await prisma.servicioEstetica.update({ where: { id: req.params.id }, data: body });
 
     if (req.body.estadoGrooming === 'LISTO_RETIRAR') {
       const io = (req as any).io;
-      if (io) io.emit('grooming:listo', { servicioId: servicio.id, mascotaId: servicio.mascotaId });
+      if (io) emitirAVeterinaria(io, tenant.veterinariaId, 'grooming:listo', { servicioId: servicio.id, mascotaId: servicio.mascotaId });
     }
 
     res.json(parsarServicios(servicio));
@@ -91,7 +113,7 @@ esteticaRoutes.patch('/:id/estado', verificarPermiso('estetica:write'), async (r
     });
 
     const io = (req as any).io;
-    if (io) io.emit('grooming:estado', parsarServicios(servicio));
+    if (io) emitirAVeterinaria(io, tenant.veterinariaId, 'grooming:estado', parsarServicios(servicio));
 
     res.json(parsarServicios(servicio));
   } catch {

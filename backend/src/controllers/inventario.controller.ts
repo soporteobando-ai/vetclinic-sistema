@@ -1,6 +1,13 @@
 import { Response } from 'express';
 import prisma from '../config/prisma';
 import { AuthRequest, filtroTenant } from '../middleware/auth.middleware';
+import { tomarCampos } from '../utils/tenant';
+import { emitirAVeterinaria } from '../services/socket.service';
+
+const CAMPOS_PRODUCTO = [
+  'nombre', 'descripcion', 'categoria', 'principioActivo', 'marca', 'proveedor',
+  'codigoBarra', 'stockActual', 'stockMinimo', 'precio', 'unidad', 'vencimiento', 'activo',
+] as const;
 
 export const listarProductos = async (req: AuthRequest, res: Response) => {
   const { buscar, categoria, stockCritico } = req.query;
@@ -27,8 +34,8 @@ export const listarProductos = async (req: AuthRequest, res: Response) => {
 export const crearProducto = async (req: AuthRequest, res: Response) => {
   const tenant = filtroTenant(req);
   try {
-    const { vencimiento, ...rest } = req.body;
-    const data: any = { ...tenant, ...rest };
+    const { vencimiento, ...rest } = tomarCampos(req.body, CAMPOS_PRODUCTO);
+    const data: any = { ...rest, ...tenant };
     if (vencimiento) data.vencimiento = new Date(vencimiento);
     const producto = await prisma.producto.create({ data });
     res.status(201).json(producto);
@@ -44,7 +51,7 @@ export const actualizarProducto = async (req: AuthRequest, res: Response) => {
   try {
     const existing = await prisma.producto.findFirst({ where: { id, ...tenant } });
     if (!existing) return res.status(404).json({ error: 'Producto no encontrado' });
-    const { vencimiento, ...rest } = req.body;
+    const { vencimiento, ...rest } = tomarCampos(req.body, CAMPOS_PRODUCTO);
     const data: any = { ...rest };
     if (vencimiento) data.vencimiento = new Date(vencimiento);
     else if (vencimiento === '' || vencimiento === null) data.vencimiento = null;
@@ -79,7 +86,7 @@ export const registrarMovimiento = async (req: AuthRequest, res: Response) => {
 
     if (producto.stockActual <= producto.stockMinimo) {
       const io = (req as any).io;
-      if (io) io.emit('stock:alerta', { productoId, nombre: producto.nombre, stock: producto.stockActual });
+      if (io) emitirAVeterinaria(io, tenant.veterinariaId, 'stock:alerta', { productoId, nombre: producto.nombre, stock: producto.stockActual });
     }
 
     res.status(201).json({ movimiento, stockActual: producto.stockActual });

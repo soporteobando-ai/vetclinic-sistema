@@ -87,6 +87,9 @@ export const actualizar = async (req: AuthRequest, res: Response) => {
   try {
     const existing = await prisma.usuario.findFirst({ where: { id, veterinariaId: tenant.veterinariaId } });
     if (!existing) return res.status(404).json({ error: 'Usuario no encontrado' });
+    if (existing.esSuperAdmin && !req.usuario!.esSuperAdmin) {
+      return res.status(403).json({ error: 'No podés modificar a un super-administrador' });
+    }
 
     const data: any = { nombre, apellido, telefono: telefono || null };
     if (email) data.email = email;
@@ -117,6 +120,9 @@ export const cambiarEstado = async (req: AuthRequest, res: Response) => {
   try {
     const existing = await prisma.usuario.findFirst({ where: { id, veterinariaId: tenant.veterinariaId } });
     if (!existing) return res.status(404).json({ error: 'Usuario no encontrado' });
+    if (existing.esSuperAdmin && !req.usuario!.esSuperAdmin) {
+      return res.status(403).json({ error: 'No podés modificar a un super-administrador' });
+    }
 
     const usuario = await prisma.usuario.update({ where: { id }, data: { activo: Boolean(activo) }, select: SELECT_USUARIO });
     res.json(formatear(usuario));

@@ -22,7 +22,7 @@ function ModalVeterinaria({ inicial, onClose, onSuccess }: ModalVetProps) {
   const [loading, setLoading] = useState(false);
   const esEdicion = !!inicial;
 
-  const { register, handleSubmit, formState: { errors } } = useForm({
+  const { register, handleSubmit, formState: { errors } } = useForm<Record<string, any>>({
     defaultValues: inicial
       ? { nombre: inicial.nombre, direccion: inicial.direccion ?? '', telefono: inicial.telefono ?? '', email: inicial.email ?? '' }
       : {},
